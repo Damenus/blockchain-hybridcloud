@@ -1,0 +1,3 @@
+[submodule "python-libraptorq"]
+	path = python-libraptorq
+	url = https://github.com/Damenus/python-libraptorq.git

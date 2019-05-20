@@ -1,0 +1,1 @@
+COPY ./lib/* /usr/lib

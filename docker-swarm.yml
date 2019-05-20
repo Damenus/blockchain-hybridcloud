@@ -13,6 +13,8 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
+# docker-compose -f docker-swarm.yml up --force
+
 version: "2.1"
 
 services:
@@ -37,6 +39,13 @@ services:
     depends_on:
       - validator
     entrypoint: xo-tp-python -vv -C tcp://validator:4004
+
+  hdfssb-tp-python:
+    image: damenus/sawtooth-hdfssb-tp-python-default:0.1
+    container_name: sawtooth-hdfssb-tp-python-default
+    depends_on:
+      - validator
+    entrypoint: hdfssb-tp-python -vv -C tcp://validator:4004
 
   validator:
     image: hyperledger/sawtooth-validator:1.1
