@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: daemon
+spec:
+  containers:
+    - name: daemon
+      image: damenus/daemon:0.1
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 60000
+          name: "tcp-connection"
+      volumeMounts:
+        - name: host-path
+          mountPath: /daemon/daemon_dir
+  volumes:
+    - name: host-path
+      hostPath:
+        path: /daemon/daemon_dir
+#    - name:  example-local-pv
+#      persistentVolumeClaim:
+#       claimName:  example-local-pv
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: daemon-service
+  labels:
+    run: daemon
+spec:
+  ports:
+  - port: 60000
+    protocol: TCP
+  selector:
+    run: daemon
