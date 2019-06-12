@@ -17,6 +17,14 @@ items:
           name: sawtooth-0
       spec:
         containers:
+          - name: hdfssb-tp-python
+            image: damenus/hdfssb-processor:0.1
+            #            command:
+            #              - bash
+            #            args:
+            #              - -c
+            #              - "hdfssb -vv -C tcp://$HOSTNAME:4004
+
           - name: sawtooth-intkey-tp-python
             image: hyperledger/sawtooth-intkey-tp-python:1.1
             command:
@@ -153,13 +161,14 @@ items:
                 - name: poet-shared-0
                   mountPath: "/poet-shared"
 
-          - name: sawtooth-xo-tp-python
-            image: hyperledger/sawtooth-xo-tp-python:1.1
-            command:
-              - bash
-            args:
-              - -c
-              - "xo-tp-python -vv -C tcp://$HOSTNAME:4004"
+#          - name: sawtooth-xo-tp-python
+#            image: hyperledger/sawtooth-xo-tp-python:1.1
+#            command:
+#              - bash
+#            args:
+#              - -c
+#              - "xo-tp-python -vv -C tcp://$HOSTNAME:4004"
+
         volumes:
           - name: poet-shared-0
             emptyDir: {}

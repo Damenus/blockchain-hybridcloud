@@ -1,4 +1,7 @@
-import socket                   # Import socket module
+import socket
+from .rq import rq
+
+rq()
 
 s = socket.socket()             # Create a socket object
 host = '10.1.1.8' #socket.gethostname()     # Get local machine name

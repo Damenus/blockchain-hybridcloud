@@ -150,7 +150,11 @@ def _decode(opts, data):
     return data
 
 
-def rq():
+
+def rq(args=None, error_func=None):
+
+    opts = {'debug': True, 'threads': 0, 'subsymbol-size': 123}
+
     import argparse
     parser = argparse.ArgumentParser(
         description='Encode/decode data using RaptorQ rateless'
@@ -196,7 +200,7 @@ def rq():
                           ' to reassemble to file as a fraction of that "required" count.'
                           ' For example, if 100 symbols are required, "-n 0.5" will generate 150 symbols.'
                           ' Must be specified manually.')
-
+    #
     cmd.add_argument('-d', '--drop-rate',
                      default=0, type=float, metavar='0-1.0',
                      help='Drop specified randomly-picked fraction'

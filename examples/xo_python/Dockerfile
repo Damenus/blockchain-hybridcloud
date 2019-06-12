@@ -24,7 +24,8 @@ RUN apt-get update \
 RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
  && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
  || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
- && apt-get update
+ && apt-get update \
+ && apt-get upgrade -y
 
 RUN apt-get install -y -q \
     git \

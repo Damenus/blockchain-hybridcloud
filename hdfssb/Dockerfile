@@ -24,7 +24,8 @@ RUN apt-get update \
 RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
  && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
  || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
- && apt-get update
+ && apt-get update \
+ && apt-get upgrade -y
 
 RUN apt-get install -y -q \
     git \
@@ -44,14 +45,25 @@ RUN apt-get install -y -q \
     python3-yaml \
     python3-zmq
 
+RUN apt-get install -y -q \
+    apt-transport-https \
+    build-essential \
+    ca-certificates \
+    python3-sawtooth-sdk \
+ && apt-get clean
+
 RUN mkdir -p /var/log/sawtooth
 
-ENV PATH=$PATH:/project/sawtooth-sdk-python/bin
+ENV PATH=$PATH:/project/hdfssb
 
-WORKDIR /project/sawtooth-sdk-python
+WORKDIR /project/hdfssb
 
-CMD echo "\033[0;32m--- Building xo-tp-python ---\n\033[0m" \
- && bin/protogen \
- && cd examples/xo_python \
- && python3 setup.py clean --all \
- && python3 setup.py build
+EXPOSE 4004/tcp
+
+CMD bash -c './simple'
+
+#CMD echo "\033[0;32m--- Building xo-tp-python ---\n\033[0m" \
+# && bin/protogen \
+# && cd examples/xo_python \
+# && python3 setup.py clean --all \
+# && python3 setup.py build
