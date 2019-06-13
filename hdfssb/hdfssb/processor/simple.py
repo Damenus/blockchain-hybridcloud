@@ -186,18 +186,25 @@ def main():
     setup_loggers()
     try:
         # Register the transaction handler and start it.
-        processor = TransactionProcessor(url='tcp://validator:4004')
-
+        print("1")
+        dd = sys.argv[2]
+        print(dd)
+        processor = TransactionProcessor(url=dd)
+        print("Create TP")
         handler = SimpleWalletTransactionHandler(sw_namespace)
-
+        print("Create handler")
         processor.add_handler(handler)
 
         processor.start()
-
+       
     except KeyboardInterrupt:
+        print("Keyboard")
         pass
     except SystemExit as err:
         raise err
     except BaseException as err:
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()

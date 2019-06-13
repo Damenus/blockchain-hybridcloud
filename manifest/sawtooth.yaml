@@ -17,8 +17,20 @@ items:
           name: sawtooth-0
       spec:
         containers:
-          - name: hdfssb-tp-python
+          - name: hdfssb-tp-0
             image: damenus/hdfssb-processor:0.1
+            imagePullPolicy: Always
+            command: [ "/bin/bash", "-c", "--" ]
+            args: [ "while true; do sleep 30; done;" ]  
+         
+          - name: hdfssb-tp
+            image: damenus/hdfssb-processor:0.1
+            imagePullPolicy: Always
+            command:
+              - bash
+            args:
+              - -c
+              - "python3 ./hdfssb/processor/simple.py -C tcp://$HOSTNAME:4004" 
             #            command:
             #              - bash
             #            args:
@@ -153,10 +165,10 @@ items:
                    --bind component:tcp://eth0:4004 \
                    --bind consensus:tcp://eth0:5050 \
                    --bind network:tcp://eth0:8800 \
-                   --peers tcp://$SAWTOOTH_1_SERVICE_HOST:8800 \
-                   --peers tcp://$SAWTOOTH_2_SERVICE_HOST:8800 \
-                   --peers tcp://$SAWTOOTH_3_SERVICE_HOST:8800 \
-                   --peers tcp://$SAWTOOTH_4_SERVICE_HOST:8800"
+#                   --peers tcp://$SAWTOOTH_1_SERVICE_HOST:8800 \
+#                   --peers tcp://$SAWTOOTH_2_SERVICE_HOST:8800 \
+#                   --peers tcp://$SAWTOOTH_3_SERVICE_HOST:8800 \
+#                   --peers tcp://$SAWTOOTH_4_SERVICE_HOST:8800"
             volumeMounts:
                 - name: poet-shared-0
                   mountPath: "/poet-shared"
