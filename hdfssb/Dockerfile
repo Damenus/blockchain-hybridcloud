@@ -58,9 +58,11 @@ ENV PATH=$PATH:/project/hdfssb
 
 WORKDIR /project/hdfssb
 
+COPY . .
+
 EXPOSE 4004/tcp
 
-CMD bash -c './simple'
+CMD bash -c 'python3 ./hdfssb/processor/simple.py'
 
 #CMD echo "\033[0;32m--- Building xo-tp-python ---\n\033[0m" \
 # && bin/protogen \
