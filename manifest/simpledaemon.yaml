@@ -1,0 +1,182 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sawtooth-0
+spec:
+  selector:
+    matchLabels:
+      name: sawtooth-0
+  template:
+    metadata:
+      labels:
+        name: sawtooth-0
+    spec:
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+#      affinity:
+#        nodeAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#            nodeSelectorTerms:
+#              - matchExpressions:
+#                  - key: own_ip
+#                    operator: In
+#                    values:
+#                     - 100.64.176.33
+      containers:
+        - name: hdfssb-tp-0
+          image: damenus/hdfssb-processor:0.1
+          imagePullPolicy: Always
+          command: [ "/bin/bash", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+
+        - name: hdfssb-tp
+          image: damenus/hdfssb-processor:0.1
+          imagePullPolicy: Always
+          command:
+            - bash
+          args:
+            - -c
+            - "python3 ./hdfssb/processor/simple.py -C tcp://$HOSTNAME:4004"
+        - name: sawtooth-intkey-tp-python
+          image: hyperledger/sawtooth-intkey-tp-python:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "intkey-tp-python -vv -C tcp://$HOSTNAME:4004"
+
+        - name: sawtooth-poet-engine
+          image: hyperledger/sawtooth-poet-engine:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "if [ ! -f /poet-shared/poet-enclave-measurement ]; then \
+                  poet enclave measurement >> /poet-shared/poet-enclave-measurement; \
+              fi && \
+              if [ ! -f /poet-shared/poet-enclave-basename ]; then \
+                  poet enclave basename >> /poet-shared/poet-enclave-basename; \
+              fi && \
+              if [ ! -f /poet-shared/simulator_rk_pub.pem ]; then \
+                  cp /etc/sawtooth/simulator_rk_pub.pem /poet-shared; \
+              fi && \
+              while [ ! -f /poet-shared/validator-0/keys/validator.priv ]; do \
+                  echo 'waiting for validator key'; \
+                  sleep 1; \
+              done && \
+              cp -a /poet-shared/validator-0/keys /etc/sawtooth && \
+              poet registration create -k /etc/sawtooth/keys/validator.priv -o /poet-shared/poet.batch && \
+              poet-engine -C tcp://$HOSTNAME:5050 --component tcp://$HOSTNAME:4004"
+          volumeMounts:
+              - name: poet-shared-0
+                mountPath: "/poet-shared"
+
+        - name: sawtooth-poet-validator-registry-tp
+          image: hyperledger/sawtooth-poet-validator-registry-tp:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "poet-validator-registry-tp -vv -C tcp://$HOSTNAME:4004"
+
+        - name: sawtooth-rest-api
+          image: hyperledger/sawtooth-rest-api:1.1
+          ports:
+            - name: api
+              containerPort: 8008
+          command:
+            - bash
+          args:
+            - -c
+            - "sawtooth-rest-api -C tcp://$HOSTNAME:4004"
+
+        - name: sawtooth-settings-tp
+          image: hyperledger/sawtooth-settings-tp:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "settings-tp -vv -C tcp://$HOSTNAME:4004"
+
+        - name: sawtooth-shell
+          image: hyperledger/sawtooth-shell:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "sawtooth keygen && tail -f /dev/null"
+
+        - name: sawtooth-validator
+          image: hyperledger/sawtooth-validator:1.1
+          ports:
+            - name: tp
+              containerPort: 4004
+            - name: consensus
+              containerPort: 5050
+            - name: validators
+              containerPort: 8800
+          command:
+            - bash
+          args:
+            - -c
+            - "if [ ! -e /etc/sawtooth/keys/validator.priv ]; then \
+                 sawadm keygen; \
+               fi && \
+               mkdir -p /poet-shared/validator-0 || true && \
+               cp -a /etc/sawtooth/keys /poet-shared/validator-0 && \
+               while [ ! -f /poet-shared/poet-enclave-measurement ]; do \
+                   echo 'waiting for poet-enclave-measurement'; \
+                   sleep 1; \
+               done && \
+               while [ ! -f /poet-shared/poet-enclave-basename ]; do \
+                   echo 'waiting for poet-enclave-basename'; \
+                   sleep 1; \
+               done && \
+               while [ ! -f /poet-shared/poet.batch ]; do \
+                   echo 'waiting for poet.batch'; \
+                   sleep 1; \
+               done && \
+               cp /poet-shared/poet.batch / && \
+               if [ ! -e config-genesis.batch ]; then \
+                 sawset genesis -k /etc/sawtooth/keys/validator.priv -o config-genesis.batch; \
+               fi && \
+               if [ ! -e config.batch ]; then \
+                 sawset proposal create \
+                   -k /etc/sawtooth/keys/validator.priv \
+                   sawtooth.consensus.algorithm=poet \
+                   sawtooth.poet.report_public_key_pem=\"$(cat /poet-shared/simulator_rk_pub.pem)\" \
+                   sawtooth.poet.valid_enclave_measurements=$(cat /poet-shared/poet-enclave-measurement) \
+                   sawtooth.poet.valid_enclave_basenames=$(cat /poet-shared/poet-enclave-basename) \
+                   sawtooth.poet.initial_wait_time=15 \
+                   sawtooth.poet.target_wait_time=15 \
+                   sawtooth.publisher.max_batches_per_block=200 \
+                   sawtooth.poet.key_block_claim_limit=100000 \
+                   sawtooth.poet.ztest_minimum_win_count=100000 \
+                   -o config.batch; \
+               fi && \
+               if [ ! -e /var/lib/sawtooth/genesis.batch ]; then \
+                 sawadm genesis config-genesis.batch config.batch poet.batch; \
+               fi && \
+               if [ ! -e /root/.sawtooth/keys/my_key.priv ]; then \
+                 sawtooth keygen my_key; \
+               fi && \
+               sawtooth-validator -vv \
+                 --endpoint tcp://$SAWTOOTH_0_SERVICE_HOST:8800 \
+                 --bind component:tcp://100.64.176.33:4004 \
+                 --bind consensus:tcp://100.64.176.33:5050 \
+                 --bind network:tcp://100.64.176.33:8800 "
+          volumeMounts:
+              - name: poet-shared-0
+                mountPath: "/poet-shared"
+
+        - name: sawtooth-xo-tp-python
+          image: hyperledger/sawtooth-xo-tp-python:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "xo-tp-python -vv -C tcp://$HOSTNAME:4004"
+      volumes:
+        - name: poet-shared-0
+          emptyDir: {}
