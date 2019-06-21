@@ -1,3 +1,6 @@
 [submodule "python-libraptorq"]
 	path = python-libraptorq
 	url = https://github.com/Damenus/python-libraptorq.git
+[submodule "kubespray"]
+	path = kubespray
+	url = https://github.com/Damenus/kubespray.git
