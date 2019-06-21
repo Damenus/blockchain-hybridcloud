@@ -186,19 +186,19 @@ def main():
     setup_loggers()
     try:
         # Register the transaction handler and start it.
-        print("1")
+        LOGGER.info("1")
         dd = sys.argv[2]
-        print(dd)
+        LOGGER.info(dd)
         processor = TransactionProcessor(url=dd)
-        print("Create TP")
+        LOGGER.info("Create TP")
         handler = SimpleWalletTransactionHandler(sw_namespace)
-        print("Create handler")
+        LOGGER.info("Create handler")
         processor.add_handler(handler)
 
         processor.start()
        
     except KeyboardInterrupt:
-        print("Keyboard")
+        LOGGER.error("KeyboardInterrupt")
         pass
     except SystemExit as err:
         raise err
