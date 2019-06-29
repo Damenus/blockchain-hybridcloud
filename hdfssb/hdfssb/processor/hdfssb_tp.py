@@ -64,7 +64,7 @@ class SimpleWalletTransactionHandler(TransactionHandler):
 
         # Get the payload and extract simplewallet-specific information.
         header = transaction.header
-        payload_map = json.load(transaction.payload.decode())
+        payload_map = json.loads(transaction.payload.decode())
         LOGGER.info("---------\n" + payload_map)
         # operation = payload_map.operation
         # amount = payload_map.amount
