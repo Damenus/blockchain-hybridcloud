@@ -59,6 +59,19 @@ def setup_loggers(verbose_level):
     logger.setLevel(logging.DEBUG)
     logger.addHandler(create_console_handler(verbose_level))
 
+
+def add_reserve_storage_parser(subparsers, parent_parser):
+    parser = subparsers.add_parser(
+        'reserve_storage',
+        help='reserve_storage',
+        parents=[parent_parser])
+
+    parser.add_argument(
+        'value',
+        type=int,
+        help='the amount to deposit')
+
+
 def add_deposit_parser(subparsers, parent_parser):
     '''Define the "deposit" command line parsing.'''
     parser = subparsers.add_parser(
@@ -159,6 +172,7 @@ def create_parser(prog_name):
     subparsers.required = True
 
     add_deposit_parser(subparsers, parent_parser)
+    add_reserve_storage_parser(subparsers, parent_parser)
     add_withdraw_parser(subparsers, parent_parser)
     add_balance_parser(subparsers, parent_parser)
     add_transfer_parser(subparsers, parent_parser)
