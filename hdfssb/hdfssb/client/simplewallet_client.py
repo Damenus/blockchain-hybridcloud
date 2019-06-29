@@ -21,6 +21,7 @@ import base64
 import random
 import requests
 import yaml
+import json
 
 from sawtooth_signing import create_context
 from sawtooth_signing import CryptoFactory
@@ -163,14 +164,14 @@ class SimpleWalletClient(object):
 
     def _wrap_and_send(self,
                        action,
-                       json):
+                       value):
         '''Create a transaction, then wrap it in a batch.     
                                                               
            Even single transactions must be wrapped into a batch.
         ''' 
 
         # Generate a csv utf-8 encoded string as payload
-        rawPayload = {'action': action, 'payload': json }
+        rawPayload = {'action': action, 'payload': value}
         #
         # for val in values:
         #     rawPayload = ",".join([rawPayload, str(val)])
