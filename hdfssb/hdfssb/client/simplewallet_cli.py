@@ -29,11 +29,11 @@ import pkg_resources
 
 from colorlog import ColoredFormatter
 
-from hdfssb.hdfssb.client.simplewallet_client import SimpleWalletClient
+from simplewallet_client import SimpleWalletClient
 
 DISTRIBUTION_NAME = 'simplewallet'
 
-DEFAULT_URL = 'http://rest-api:8008'
+DEFAULT_URL = 'http://k8s-sawtooth-2:31454'
 
 def create_console_handler(verbose_level):
     clog = logging.StreamHandler()
