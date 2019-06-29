@@ -18,7 +18,7 @@ spec:
           args:
             - -c
             - "python3 ./hdfssb/processor/hdfssb_tp.py -C tcp://sawtooth-validator:4004"
-        - name: hdfssb-simple
+        - name: hdfssb
           image: damenus/hdfssb-processor:0.1 
           imagePullPolicy: Always
           command:
