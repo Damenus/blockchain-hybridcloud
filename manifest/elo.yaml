@@ -11,6 +11,14 @@ spec:
     spec:
       containers:
         - name: hdfssb-simple
+          image: damenus/hdfssb-processor:0.1
+          imagePullPolicy: Always
+          command:
+            - bash
+          args:
+            - -c
+            - "python3 ./hdfssb/processor/hdfssb_tp.py -C tcp://sawtooth-validator:4004"
+        - name: hdfssb-simple
           image: damenus/hdfssb-processor:0.1 
           imagePullPolicy: Always
           command:
