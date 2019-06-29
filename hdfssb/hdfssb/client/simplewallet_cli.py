@@ -71,6 +71,11 @@ def add_reserve_storage_parser(subparsers, parent_parser):
         type=int,
         help='the amount to deposit')
 
+    parser.add_argument(
+        'customerName',
+        type=str,
+        help='the name of customer to deposit to')
+
 
 def add_deposit_parser(subparsers, parent_parser):
     '''Define the "deposit" command line parsing.'''
