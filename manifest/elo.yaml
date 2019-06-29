@@ -138,6 +138,7 @@ spec:
       protocol: TCP
       port: 8008
       targetPort: 8008
+      nodePort: 31454
 ---
 apiVersion: v1
 kind: Service
