@@ -65,10 +65,10 @@ class SimpleWalletTransactionHandler(TransactionHandler):
         # Get the payload and extract simplewallet-specific information.
         header = transaction.header
         payload_map = json.loads(transaction.payload.decode())
-        LOGGER.info("---------\n" + payload_map)
+        LOGGER.info("---------\n" + str(payload_map))
         # operation = payload_map.operation
         # amount = payload_map.amount
-        operation = payload_map.action
+        operation = payload_map['action']
 
         # Get the public key sent from the client.
         from_key = header.signer_public_key
