@@ -1,7 +1,8 @@
 import socket
 
 s = socket.socket()             # Create a socket object
-host = '127.0.1.1' #'10.1.1.8' #socket.gethostname()     # Get local machine name
+host = '127.0.1.1' #'10.1.1.8' #
+host = socket.gethostname()     # Get local machine name
 port = 60000                    # Reserve a port for your service.
 
 s.connect((host, port))
