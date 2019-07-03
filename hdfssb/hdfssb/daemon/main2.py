@@ -50,7 +50,7 @@ logging.basicConfig(level=logging.DEBUG)
 DIR = "/daemon/daemon_dir/"
 DIR = "./daemon/"
 
-port = 60000  # Reserve a port for your service.
+port = 60002  # Reserve a port for your service.
 s = socket.socket()  # Create a socket object
 host = socket.gethostname()  # Get local machine name
 s.bind((host, port))  # Bind to the port
@@ -63,53 +63,15 @@ while True:
     print("Got a connection from ", addr)
     connbuf = Buffer(conn)
 
-    while True:
-        # hash_type = connbuf.get_utf8()
-        # if not hash_type:
-        #     break
-        # print('hash type: ', hash_type)
+    file_name = connbuf.get_utf8()
+    if not file_name:
+        break
+    file_name = os.path.join(DIR,file_name)
+    print('file name: ', file_name)
 
-        file_name = connbuf.get_utf8()
-        if not file_name:
-            break
-        file_name = os.path.join(DIR,file_name)
-        print('file name: ', file_name)
+    with open(file_name, 'rb') as f:
+        connbuf.put_bytes(f.read())
+    print('File Sent')
 
-        file_size = int(connbuf.get_utf8())
-        print('file size: ', file_size )
-
-        with open(file_name, 'wb+') as f:
-            remaining = file_size
-            while remaining:
-                chunk_size = 4096 if remaining >= 4096 else remaining
-                chunk = connbuf.get_bytes(chunk_size)
-                if not chunk: break
-                f.write(chunk)
-                remaining -= len(chunk)
-            if remaining:
-                print('File incomplete.  Missing',remaining,'bytes.')
-            else:
-                print('File received successfully.')
     print('Connection closed.')
     conn.close()
-
-
-# while True:
-#     conn, addr = s.accept()  # Establish connection with client.
-#     # logging.debug('Got connection from', addr)
-#     logging.debug('Got connection')
-#     data = conn.recv(1024).decode()
-#     name = data.split('???', 1)[0]
-#     data = data.split('???', 1)[1]
-#     logging.debug('Server received', name)
-#
-#     with open(DIR + name, 'wb+') as f:
-#         f.write(data)
-#         while True:
-#             data = conn.recv(1024)
-#             logging.debug('data=%s', (data))
-#             if not data:
-#                 break
-#             f.write(data)
-#
-#     conn.close()
