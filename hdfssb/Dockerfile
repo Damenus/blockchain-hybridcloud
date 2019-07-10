@@ -52,6 +52,11 @@ RUN apt-get install -y -q \
     python3-sawtooth-sdk \
  && apt-get clean
 
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8AA7AF1F1091A5FD
+RUN apt-get update
+RUN apt-get install -y sawtooth
+RUN apt-get install -y vim
+
 RUN mkdir -p /var/log/sawtooth
 
 ENV PATH=$PATH:/project/hdfssb
