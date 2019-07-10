@@ -6,6 +6,10 @@ import json
 
 import socket
 
+import requests
+import yaml
+import base64
+
 import simplejson as simplejson
 
 
@@ -52,6 +56,62 @@ class Buffer:
             raise ValueError('string contains delimiter(null)')
         self.sock.sendall(s.encode() + b'\x00')
 
+
+def _hash(data):
+    return hashlib.sha512(data).hexdigest()
+
+
+def balance(self):
+    FAMILY_NAME = 'hdfssb'
+
+    address = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
+              _hash(self._publicKey.encode('utf-8'))[0:64]
+
+    result = _send_to_restapi(
+        "state/{}".format(address))
+    try:
+        return base64.b64decode(yaml.safe_load(result)["data"])
+
+    except BaseException:
+        return None
+
+
+def _send_to_restapi(self,
+                     suffix,
+                     data=None,
+                     contentType=None):
+    '''Send a REST command to the Validator via the REST API.'''
+
+    if self._baseUrl.startswith("http://"):
+        url = "{}/{}".format(self._baseUrl, suffix)
+    else:
+        url = "http://{}/{}".format(self._baseUrl, suffix)
+
+    headers = {}
+
+    if contentType is not None:
+        headers['Content-Type'] = contentType
+
+    try:
+        if data is not None:
+            result = requests.post(url, headers=headers, data=data)
+        else:
+            result = requests.get(url, headers=headers)
+
+        if not result.ok:
+            raise Exception("Error {}: {}".format(
+                result.status_code, result.reason))
+
+    except requests.ConnectionError as err:
+        raise Exception(
+            'Failed to connect to {}: {}'.format(url, str(err)))
+
+    except BaseException as err:
+        raise Exception(err)
+
+    return result.text
+
+
 def main():
     # s = min(file_size - 1, 65528) # 65528 is 2^16 - 8, max uint16_t
     # s = s - s mod 8
@@ -67,6 +127,8 @@ def main():
     # private      public       ilosć bloków
     # procent bloków do pirvate
     # (blocks - (blocks*drop_rate)) / nodes > repair-symbols-rate
+
+    #  ./rq --debug encode -s1600 -m200 --repair-symbols-rate 1 --drop-rate 0.5 README.rst README.rst.enc
 
     # launch your python2 script using bash
     encode = """
@@ -130,6 +192,17 @@ def main():
     # f.close()
     with open('dd2/head', "w+") as json_file:
         json.dump(mapa, json_file)
+
+
+############## READ ledger (first)
+
+    balance()
+
+################ Save information in ledger
+
+
+############### READ ledger (second)
+
 
 
 ################ Send file

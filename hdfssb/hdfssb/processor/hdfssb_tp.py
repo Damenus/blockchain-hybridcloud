@@ -1,8 +1,12 @@
+import time
 import traceback
 import sys
 import hashlib
 import logging
 import json
+
+from hdfssb.hdfssb.processor.node import *
+from hdfssb.hdfssb.processor.file import *
 
 from sawtooth_sdk.processor.handler import TransactionHandler
 from sawtooth_sdk.processor.exceptions import InvalidTransaction
@@ -11,8 +15,8 @@ from sawtooth_sdk.processor.core import TransactionProcessor
 
 LOGGER = logging.getLogger(__name__)
 
-FAMILY_NAME = "simplewallet"
-
+FAMILY_NAME = 'hdfssb'
+NODE_NAMESPACE = hashlib.sha512('hdfssb'.encode("utf-8")).hexdigest()[0:6]
 
 def _hash(data):
     '''Compute the SHA-512 hash and return the result as hex characters.'''
@@ -22,25 +26,40 @@ def _hash(data):
 # Prefix for simplewallet is the first six hex digits of SHA-512(TF name).
 sw_namespace = _hash(FAMILY_NAME.encode('utf-8'))[0:6]
 
+def _make_xo_address(name):
+    return hashlib.sha512('hdfssb'.encode('utf-8')).hexdigest()[:6] + \
+        hashlib.sha512(name.encode('utf-8')).hexdigest()[:64]
 
-class File:
-    def __init__(self, name, board, state, player1, player2):
-        self.name = name
-        self.owner = board
-        self.state = state
-        self.users = []
-        self.pice_of_file = {}  # as23d1:10.1.1.0, da1d2:10.1.1.1
-        self.file_hash = player1
-        self.pokolei_kawalki = []
+# /user/file_name/part-0
+# class File:
+#     def __init__(self, name, board, state, player1, player2):
+#         self.name = name
+#         self.owner = board
+#         self.state = state
+#         self.users = []
+#         self.pice_of_file = {}  # as23d1:10.1.1.0, da1d2:10.1.1.1
+#         self.file_hash = player1
+#         self.pokolei_kawalki = []
 
 
-class SpaceStorage:
-    def __init__(self, node_name, capacity, taken_space, reversed_space, last_update):
-        self.node_name = node_name  # 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
-        self.capacity = capacity
-        self.taken_space = taken_space
-        self.reversed_space = reversed_space
-        self.last_update = last_update
+def _get_file_address(from_key):
+    return NODE_NAMESPACE + _hash('file'.encode('utf-8'))[0:4] + _hash(from_key.encode('utf-8'))[0:60]
+
+
+
+
+# # /root
+# class Node:
+#     def __init__(self, node_name, capacity, taken_space, reversed_space, last_update):
+#         self.node_name = node_name  # 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
+#         self.capacity = capacity
+#         self.taken_space = taken_space
+#         self.reversed_space = reversed_space
+#         self.last_update = last_update
+#
+#
+# def _get_node_address(self, from_key):
+#     return _hash(FAMILY_NAME.encode('utf-8'))[0:6] + _hash(from_key.encode('utf-8'))[0:64]
 
 
 class SimpleWalletTransactionHandler(TransactionHandler):
@@ -58,23 +77,29 @@ class SimpleWalletTransactionHandler(TransactionHandler):
 
     @property
     def namespaces(self):
-        return [self._namespace_prefix]
+        return [NODE_NAMESPACE, FILE_NAMESPACE]
 
     def apply(self, transaction, context):
+
+        node_state = NodeState(context)
+        files_state = FileState(context)
 
         # Get the payload and extract simplewallet-specific information.
         header = transaction.header
         payload_map = json.loads(transaction.payload.decode())
         LOGGER.info("---------\n" + str(payload_map))
-        # operation = payload_map.operation
-        # amount = payload_map.amount
         operation = payload_map['action']
+
+        # payload_list = transaction.payload.decode().split(",")
+        # LOGGER.info("---------\n" + str(payload_list))
+        # operation = payload_list[0]
+        # name = payload_list[1]
 
         # Get the public key sent from the client.
         from_key = header.signer_public_key
 
         # Perform the operation.
-        LOGGER.info("Operation = " + operation)
+        LOGGER.info("Operation = " + operation + " from " + from_key)
 
         # if operation == "deposit":
         #     self._make_deposit(context, amount, from_key)
@@ -88,24 +113,45 @@ class SimpleWalletTransactionHandler(TransactionHandler):
         #                 "Operation should be deposit, withdraw or transfer")
 
         if operation == "reserve_storage":
-            self._reserve_storage(context, payload_map, from_key)
-        elif operation == "":
-            pass
+            self._reserve_storage(context, payload_map, from_key, node_state)
+        elif operation == "add_node":
+            self._add_node(context, payload_map, from_key, node_state)
+        elif operation == "add_file":
+            self._add_file(context, payload_map, from_key, files_state)
         else:
             LOGGER.info("Unhandled action.")
 
-    def _reserve_storage(self, context, payload_map, from_key):
-        wallet_address = self._get_wallet_address(from_key)
+    def _reserve_storage(self, context, payload_map, from_key, node_state):
+        # list_nodes = node_state.get_node("/root")
+        name = payload_map['payload']
+
+        wallet_address = self._get_wallet_address(name)
         current_entry = context.get_state([wallet_address])
+
+        LOGGER.info('Got the key {} and the wallet address {} '.format(
+            from_key, wallet_address))
+
         if current_entry == []:
-            new_balance = int(0)
+            LOGGER.info('No previous deposits, creating new deposit {} '
+                        .format(from_key))
         else:
             balance = int(current_entry[0].data)
-            new_balance = int(0) + int(1)
+            LOGGER.info('Deposit {} '.format(balance))
 
-        state_data = str(new_balance).encode('utf-8')
-        addresses = context.set_state({wallet_address: state_data})
-        pass
+    def _add_node(self, context, payload_map, from_key, node_state):
+
+        name = payload_map['payload']
+        node = Node(node_name=name, capacity=1000, taken_space=0, reversed_space=0, last_update=0)
+        node_name_address = self._get_wallet_address(name)
+        LOGGER.info('Node name: {} Address: {} '.format(name, node_name_address))
+        list_nodes = node_state.set_game(name, node)
+
+    def _add_file(self, context, payload_map, from_key, files_state):
+        name = payload_map['payload']
+        node = File(node_name=name, capacity=1000, taken_space=0, reversed_space=0, last_update=0)
+        node_name_address = _get_file_address(name)
+        LOGGER.info('Node name: {} Address: {} '.format(name, node_name_address))
+        list_nodes = files_state.set_game(name, node)
 
     def _make_deposit(self, context, amount, from_key):
         wallet_address = self._get_wallet_address(from_key)
@@ -201,7 +247,7 @@ def main():
     try:
         dd = sys.argv[2]
         processor = TransactionProcessor(url=dd)
-        handler = SimpleWalletTransactionHandler(sw_namespace)
+        handler = SimpleWalletTransactionHandler(NODE_NAMESPACE)
         processor.add_handler(handler)
 
         processor.start()
