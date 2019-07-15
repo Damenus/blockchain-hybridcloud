@@ -28,6 +28,8 @@ from sawtooth_sdk.protobuf.batch_pb2 import BatchList
 from sawtooth_sdk.protobuf.batch_pb2 import BatchHeader
 from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
+from hdfssb.hdfssb.client.hdfssb_client import *
+from hdfssb.hdfssb.common.buffer import *
 
 def _sha512(data):
     return hashlib.sha512(data).hexdigest()
@@ -37,48 +39,48 @@ class XoException(Exception):
     pass
 
 
-class Buffer:
-    def __init__(self,s):
-        '''Buffer a pre-created socket.
-        '''
-        self.sock = s
-        self.buffer = b''
-
-    def get_bytes(self,n):
-        '''Read exactly n bytes from the buffered socket.
-           Return remaining buffer if <n bytes remain and socket closes.
-        '''
-        while len(self.buffer) < n:
-            data = self.sock.recv(1024)
-            if not data:
-                data = self.buffer
-                self.buffer = b''
-                return data
-            self.buffer += data
-        # split off the message bytes from the buffer.
-        data,self.buffer = self.buffer[:n],self.buffer[n:]
-        return data
-
-    def put_bytes(self,data):
-        self.sock.sendall(data)
-
-    def get_utf8(self):
-        '''Read a null-terminated UTF8 data string and decode it.
-           Return an empty string if the socket closes before receiving a null.
-        '''
-        while b'\x00' not in self.buffer:
-            data = self.sock.recv(1024)
-            if not data:
-                return ''
-            self.buffer += data
-        # split off the string from the buffer.
-        data,_,self.buffer = self.buffer.partition(b'\x00')
-        return data.decode()
-
-    def put_utf8(self,s):
-        if '\x00' in s:
-            raise ValueError('string contains delimiter(null)')
-        self.sock.sendall(s.encode() + b'\x00')
+# class Buffer:
+#     def __init__(self,s):
+#         '''Buffer a pre-created socket.
+#         '''
+#         self.sock = s
+#         self.buffer = b''
+#
+#     def get_bytes(self,n):
+#         '''Read exactly n bytes from the buffered socket.
+#            Return remaining buffer if <n bytes remain and socket closes.
+#         '''
+#         while len(self.buffer) < n:
+#             data = self.sock.recv(1024)
+#             if not data:
+#                 data = self.buffer
+#                 self.buffer = b''
+#                 return data
+#             self.buffer += data
+#         # split off the message bytes from the buffer.
+#         data,self.buffer = self.buffer[:n],self.buffer[n:]
+#         return data
+#
+#     def put_bytes(self,data):
+#         self.sock.sendall(data)
+#
+#     def get_utf8(self):
+#         '''Read a null-terminated UTF8 data string and decode it.
+#            Return an empty string if the socket closes before receiving a null.
+#         '''
+#         while b'\x00' not in self.buffer:
+#             data = self.sock.recv(1024)
+#             if not data:
+#                 return ''
+#             self.buffer += data
+#         # split off the string from the buffer.
+#         data,_,self.buffer = self.buffer.partition(b'\x00')
+#         return data.decode()
+#
+#     def put_utf8(self,s):
+#         if '\x00' in s:
+#             raise ValueError('string contains delimiter(null)')
+#         self.sock.sendall(s.encode() + b'\x00')
 
 
 FAMILY_NAME = 'hdfssb'
@@ -87,428 +89,17 @@ FAMILY_NAME = 'hdfssb'
 def _hash(data):
     return hashlib.sha512(data).hexdigest()
 
-
-class RegisterNode:
-    def __init__(self, baseUrl, name, keyFile=None):
-        self._baseUrl = baseUrl
-        self._base_url = baseUrl
-
-        if keyFile is None:
-            self._signer = None
-            return
-
-        try:
-            with open(keyFile) as fd:
-                privateKeyStr = fd.read().strip()
-        except OSError as err:
-            raise Exception('Failed to read private key {}: {}'.format(
-                keyFile, str(err)))
-
-        try:
-            privateKey = Secp256k1PrivateKey.from_hex(privateKeyStr)
-        except ParseError as err:
-            raise Exception('Failed to load private key: {}'.format(str(err)))
-
-        self._signer = CryptoFactory(create_context('secp256k1')) \
-            .new_signer(privateKey)
-
-        self._publicKey = self._signer.get_public_key().as_hex()
-
-        self._address = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
-                        _hash(self._publicKey.encode('utf-8'))[0:64]
-
-        # try:
-        #     retValue = self._wrap_and_send(
-        #         "reserve_storage",
-        #         {'value': name})
-        # except Exception:
-        #     raise Exception('Encountered an error during withdrawal')
-        # print(retValue)
-        dd = self._send_xo_txn(
-            name,
-            "add_node",
-            auth_user=None,
-            auth_password=None)
-        print(dd)
-
-    def list(self, auth_user=None, auth_password=None):
-        xo_prefix = self._get_prefix()
-
-        result = self._send_request(
-            "state?address={}".format(xo_prefix),
-            auth_user=auth_user,
-            auth_password=auth_password)
-
-        try:
-            encoded_entries = yaml.safe_load(result)["data"]
-
-            return [
-                base64.b64decode(entry["data"]) for entry in encoded_entries
-            ]
-
-        except BaseException:
-            return None
-
-    def list_file(self, auth_user=None, auth_password=None):
-        xo_prefix = self._get_prefix()
-        file_prefix = self._get_prefix_file()
-
-        result = self._send_request(
-            "state?address={}".format(xo_prefix + file_prefix),
-            auth_user=auth_user,
-            auth_password=auth_password)
-
-        try:
-            encoded_entries = yaml.safe_load(result)["data"]
-
-            return [
-                base64.b64decode(entry["data"]) for entry in encoded_entries
-            ]
-
-        except BaseException:
-            return None
-
-    def _get_prefix(self):
-        return _sha512('hdfssb'.encode('utf-8'))[0:6]
-
-    def _get_address(self, name):
-        xo_prefix = self._get_prefix()
-        game_address = _sha512(name.encode('utf-8'))[0:64]
-        return xo_prefix + game_address
-
-    def _get_prefix_file(self):
-        return _sha512('file'.encode('utf-8'))[0:4]
-
-    def _get_address_file(self, name):
-        xo_prefix = self._get_prefix()
-        file_prefix = self._get_prefix_file()
-        game_address = _sha512(name.encode('utf-8'))[0:60]
-        return xo_prefix + file_prefix + game_address
-
-    def _send_request(self,
-                      suffix,
-                      data=None,
-                      content_type=None,
-                      name=None,
-                      auth_user=None,
-                      auth_password=None):
-        if self._base_url.startswith("http://"):
-            url = "{}/{}".format(self._base_url, suffix)
-        else:
-            url = "http://{}/{}".format(self._base_url, suffix)
-
-        headers = {}
-        if auth_user is not None:
-            auth_string = "{}:{}".format(auth_user, auth_password)
-            b64_string = b64encode(auth_string.encode()).decode()
-            auth_header = 'Basic {}'.format(b64_string)
-            headers['Authorization'] = auth_header
-
-        if content_type is not None:
-            headers['Content-Type'] = content_type
-
-        try:
-            if data is not None:
-                result = requests.post(url, headers=headers, data=data)
-            else:
-                result = requests.get(url, headers=headers)
-
-            if result.status_code == 404:
-                raise XoException("No such game: {}".format(name))
-
-            if not result.ok:
-                raise XoException("Error {}: {}".format(
-                    result.status_code, result.reason))
-
-        except requests.ConnectionError as err:
-            raise XoException(
-                'Failed to connect to {}: {}'.format(url, str(err)))
-
-        except BaseException as err:
-            raise XoException(err)
-
-        return result.text
-
-    def _send_xo_txn(self,
-                     name,
-                     action,
-                     space="",
-                     wait=None,
-                     auth_user=None,
-                     auth_password=None):
-        
-        # Serialization is just a delimited utf-8 encoded string
-        payload = ",".join([action, name]).encode()
-        rawPayload = {'action': "add_node", 'payload': name}
-        json_rawPayload = json.dumps(rawPayload)
-        payload = json_rawPayload.encode()
-
-        # Construct the address
-        address = self._get_address(name)
-        
-        # Serialization is just a delimited utf-8 encoded string
-        payload = ",".join([action, name]).encode()
-        rawPayload = {'action': "add_file", 'payload': name}
-        json_rawPayload = json.dumps(rawPayload)
-        payload = json_rawPayload.encode()
-
-        # Construct the address
-        address = self._get_address_file(name)
-
-        header = TransactionHeader(
-            signer_public_key=self._signer.get_public_key().as_hex(),
-            family_name="hdfssb",
-            family_version="1.0",
-            inputs=[address],
-            outputs=[address],
-            dependencies=[],
-            payload_sha512=_sha512(payload),
-            batcher_public_key=self._signer.get_public_key().as_hex(),
-            nonce=hex(random.randint(0, 2 ** 64))
-        ).SerializeToString()
-
-        signature = self._signer.sign(header)
-
-        transaction = Transaction(
-            header=header,
-            payload=payload,
-            header_signature=signature
-        )
-
-        batch_list = self._create_batch_list([transaction])
-        batch_id = batch_list.batches[0].header_signature
-
-        if wait and wait > 0:
-            wait_time = 0
-            start_time = time.time()
-            response = self._send_request(
-                "batches", batch_list.SerializeToString(),
-                'application/octet-stream',
-                auth_user=auth_user,
-                auth_password=auth_password)
-            while wait_time < wait:
-                status = self._get_status(
-                    batch_id,
-                    wait - int(wait_time),
-                    auth_user=auth_user,
-                    auth_password=auth_password)
-                wait_time = time.time() - start_time
-
-                if status != 'PENDING':
-                    return response
-
-            return response
-
-        return self._send_request(
-            "batches", batch_list.SerializeToString(),
-            'application/octet-stream',
-            auth_user=auth_user,
-            auth_password=auth_password)
-
-
-    def _create_batch_list(self, transactions):
-        transaction_signatures = [t.header_signature for t in transactions]
-
-        header = BatchHeader(
-            signer_public_key=self._signer.get_public_key().as_hex(),
-            transaction_ids=transaction_signatures
-        ).SerializeToString()
-
-        signature = self._signer.sign(header)
-
-        batch = Batch(
-            header=header,
-            transactions=transactions,
-            header_signature=signature)
-        return BatchList(batches=[batch])
-
-    def _send_to_restapi(self,
-                         suffix,
-                         data=None,
-                         contentType=None):
-        '''Send a REST command to the Validator via the REST API.'''
-
-        if self._baseUrl.startswith("http://"):
-            url = "{}/{}".format(self._baseUrl, suffix)
-        else:
-            url = "http://{}/{}".format(self._baseUrl, suffix)
-
-        headers = {}
-
-        if contentType is not None:
-            headers['Content-Type'] = contentType
-
-        try:
-            if data is not None:
-                result = requests.post(url, headers=headers, data=data)
-            else:
-                result = requests.get(url, headers=headers)
-
-            if not result.ok:
-                raise Exception("Error {}: {}".format(
-                    result.status_code, result.reason))
-
-        except requests.ConnectionError as err:
-            raise Exception(
-                'Failed to connect to {}: {}'.format(url, str(err)))
-
-        except BaseException as err:
-            raise Exception(err)
-
-        return result.text
-
-    def _wrap_and_send(self,
-                       action,
-                       value):
-        '''Create a transaction, then wrap it in a batch.
-
-           Even single transactions must be wrapped into a batch.
-        '''
-
-        # Generate a csv utf-8 encoded string as payload
-        rawPayload = {'action': action, 'payload': value}
-        #
-        # for val in values:
-        #     rawPayload = ",".join([rawPayload, str(val)])
-
-        json_rawPayload = json.dumps(rawPayload)
-
-        payload = json_rawPayload.encode()
-
-        # Construct the address where we'll store our state
-        address = self._address
-        inputAddressList = [address]
-        outputAddressList = [address]
-
-        # if "transfer" == action:
-        #     toAddress = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
-        #     _hash(values[1].encode('utf-8'))[0:64]
-        #     inputAddressList.append(toAddress)
-        #     outputAddressList.append(toAddress)
-
-        # Create a TransactionHeader
-        header = TransactionHeader(
-            signer_public_key=self._publicKey,
-            family_name=FAMILY_NAME,
-            family_version="1.0",
-            inputs=inputAddressList,
-            outputs=outputAddressList,
-            dependencies=[],
-            payload_sha512=_hash(payload),
-            batcher_public_key=self._publicKey,
-            nonce=random.random().hex().encode()
-        ).SerializeToString()
-
-        # Create a Transaction from the header and payload above
-        transaction = Transaction(
-            header=header,
-            payload=payload,
-            header_signature=self._signer.sign(header)
-        )
-
-        transactionList = [transaction]
-
-        # Create a BatchHeader from transactionList above
-        header = BatchHeader(
-            signer_public_key=self._publicKey,
-            transaction_ids=[txn.header_signature for txn in transactionList]
-        ).SerializeToString()
-
-        # Create Batch using the BatchHeader and transactionList above
-        batch = Batch(
-            header=header,
-            transactions=transactionList,
-            header_signature=self._signer.sign(header))
-
-        # Create a Batch List from Batch above
-        batch_list = BatchList(batches=[batch])
-
-        # Send batch_list to rest-api
-        return self._send_to_restapi(
-            "batches",
-            batch_list.SerializeToString(),
-            'application/octet-stream')
-
-    # def _wrap_and_send(self,
-    #                    action,
-    #                    *values):
-    #     '''Create a transaction, then wrap it in a batch.
-    #
-    #        Even single transactions must be wrapped into a batch.
-    #     '''
-    #
-    #     # Generate a csv utf-8 encoded string as payload
-    #     rawPayload = action
-    #
-    #     for val in values:
-    #         rawPayload = ",".join([rawPayload, str(val)])
-    #
-    #     payload = rawPayload.encode()
-    #
-    #     # Construct the address where we'll store our state
-    #     address = self._address
-    #     inputAddressList = [address]
-    #     outputAddressList = [address]
-    #
-    #     if "transfer" == action:
-    #         toAddress = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
-    #                     _hash(values[1].encode('utf-8'))[0:64]
-    #         inputAddressList.append(toAddress)
-    #         outputAddressList.append(toAddress)
-    #
-    #     # Create a TransactionHeader
-    #     header = TransactionHeader(
-    #         signer_public_key=self._publicKey,
-    #         family_name=FAMILY_NAME,
-    #         family_version="1.0",
-    #         inputs=inputAddressList,
-    #         outputs=outputAddressList,
-    #         dependencies=[],
-    #         payload_sha512=_hash(payload),
-    #         batcher_public_key=self._publicKey,
-    #         nonce=random.random().hex().encode()
-    #     ).SerializeToString()
-    #
-    #     # Create a Transaction from the header and payload above
-    #     transaction = Transaction(
-    #         header=header,
-    #         payload=payload,
-    #         header_signature=self._signer.sign(header)
-    #     )
-    #
-    #     transactionList = [transaction]
-    #
-    #     # Create a BatchHeader from transactionList above
-    #     header = BatchHeader(
-    #         signer_public_key=self._publicKey,
-    #         transaction_ids=[txn.header_signature for txn in transactionList]
-    #     ).SerializeToString()
-    #
-    #     # Create Batch using the BatchHeader and transactionList above
-    #     batch = Batch(
-    #         header=header,
-    #         transactions=transactionList,
-    #         header_signature=self._signer.sign(header))
-    #
-    #     # Create a Batch List from Batch above
-    #     batch_list = BatchList(batches=[batch])
-    #
-    #     # Send batch_list to rest-api
-    #     return self._send_to_restapi(
-    #         "batches",
-    #         batch_list.SerializeToString(),
-    #         'application/octet-stream')
+logging.basicConfig(level=logging.DEBUG)
 
 print('Registring...')
-dd =RegisterNode(baseUrl='127.22.0.1:8008', name='node4', keyFile='key.priv')
-print('Registered')
-aa = dd.list()
-print(aa)
-aa = dd.list_file()
-print(aa)
-exit(0)
-
-logging.basicConfig(level=logging.DEBUG)
+name = "node5"
+dd = HdfssbClient(base_url='127.22.0.1:8008', keyfile='key.priv')
+new_node = dict(node_name=name, capacity=123, taken_space=0, reversed_space=0, last_update=str(time.time()))
+print(new_node)
+asd = dd.add_node(name=name, payload_object=new_node)
+print("Add node ", asd)
+dd.wait_for_transaction(asd)
+print("Nodes ", dd.list_nodes())
 
 DIR = "/daemon/daemon_dir/"
 DIR = "./daemon/"
@@ -553,6 +144,9 @@ while True:
                 print('File incomplete.  Missing',remaining,'bytes.')
             else:
                 print('File received successfully.')
+
+        # Check downloaded file if exist in blockchain, next delete or confirm na blockchain
+
     print('Connection closed.')
     conn.close()
 

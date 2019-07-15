@@ -1,49 +1,27 @@
-# Copyright 2018 Intel Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# -----------------------------------------------------------------------------
-
 import hashlib
+import json
 
 from sawtooth_sdk.processor.exceptions import InternalError
 
 
-def _hash(data):
-    '''Compute the SHA-512 hash and return the result as hex characters.'''
-    return hashlib.sha512(data).hexdigest()
-
-NODE_NAMESPACE = hashlib.sha512('xo'.encode("utf-8")).hexdigest()[0:6]
-FILE_NAMESPACE = hashlib.sha512('hdfssb'.encode("utf-8")).hexdigest()[0:6]
-
-def _make_node_address(from_key):
-    return FILE_NAMESPACE + _hash('file'.encode('utf-8'))[0:4] + _hash(from_key.encode('utf-8'))[0:60]
+FAMILY_NAME_NAMESPACE = hashlib.sha512('hdfssb'.encode("utf-8")).hexdigest()[0:6]
+FILE_NAMESPACE = hashlib.sha512('file'.encode("utf-8")).hexdigest()[0:4]
 
 
-# class Game:
-#     def __init__(self, name, board, state, player1, player2):
-#         self.name = name
-#         self.board = board
-#         self.state = state
-#         self.player1 = player1
-#         self.player2 = player2
+def make_file_address(name):
+    return FAMILY_NAME_NAMESPACE + FILE_NAMESPACE + hashlib.sha512(name.encode('utf-8')).hexdigest()[0:60]
 
-# /root
+
+# /{owner}/{file_name}/{block}
 class File:
-    def __init__(self, node_name, capacity, taken_space, reversed_space, last_update):
-        self.node_name = node_name  # 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
-        self.capacity = capacity
-        self.taken_space = taken_space
-        self.reversed_space = reversed_space
+    def __init__(self, file_name, owner, state, size, file_hash, blocks_of_file, last_update):
+        self.file_name = file_name
+        self.owner = owner
+        self.state = state
+        # self.users_granted = []
+        self.size = size
+        self.file_hash = file_hash
+        self.blocks_of_file = blocks_of_file  # {} as23d1:10.1.1.0, da1d2:10.1.1.1
         self.last_update = last_update
 
 
@@ -107,7 +85,7 @@ class FileState:
         return self._load_nodes(node_name=game_name).get(game_name)
 
     def _store_node(self, game_name, games):
-        address = _make_node_address(game_name)
+        address = make_file_address(game_name)
 
         state_data = self._serialize(games)
 
@@ -118,7 +96,7 @@ class FileState:
             timeout=self.TIMEOUT)
 
     def _delete_node(self, game_name):
-        address = _make_node_address(game_name)
+        address = make_file_address(game_name)
 
         self._context.delete_state(
             [address],
@@ -127,7 +105,7 @@ class FileState:
         self._address_cache[address] = None
 
     def _load_nodes(self, node_name):
-        address = _make_node_address(node_name)
+        address = make_file_address(node_name)
 
         if address in self._address_cache:
             if self._address_cache[address]:
@@ -161,19 +139,25 @@ class FileState:
         Returns:
             (dict): game name (str) keys, Game values.
         """
+        # return json.loads(data)
 
         nodes = {}
         try:
             for node in data.decode().split("|"):
-                node_name, capacity, taken_space, reversed_space, last_update = node.split(",")
+                file_name, owner, state, state, size, file_hash, blocks_str, last_update = node.split(",")
+                blocks = blocks_str.split("+")
+                blocks_of_file = {}
+                for pair in blocks:
+                    block, node = pair.split(":")
+                    blocks_of_file[block] = node
 
-                nodes[node_name] = Node(node_name, capacity, taken_space, reversed_space, last_update)
+                nodes[file_name] = File(file_name, owner, state, size, file_hash, blocks_of_file, last_update)
         except ValueError:
             raise InternalError("Failed to deserialize game data")
 
         return nodes
 
-    def _serialize(self, nodes):
+    def _serialize(self, files):
         """Takes a dict of game objects and serializes them into bytes.
 
         Args:
@@ -182,12 +166,18 @@ class FileState:
         Returns:
             (bytes): The UTF-8 encoded string stored in state.
         """
+        #return json.dumps(nodes).encode() for node in nodes: json.dumps(node.__dict__)
 
         node_strs = []
-        for name, g in nodes.items():
+        for name, g in files.items():
+            blocks = []
+            for block, node in g.blocks_of_file.items():
+                blocks.append(block + ":" + node)
+            blocks_str = "+".join(blocks)
             node_str = ",".join(
-                [name, str(g.capacity), str(g.taken_space), str(g.reversed_space), str(g.last_update)])
+                [name, str(g.owner), str(g.state), str(g.state), str(g.size), str(g.file_hash), str(blocks_str),
+                 str(g.last_update)]
+                )
             node_strs.append(node_str)
-
         return "|".join(sorted(node_strs)).encode()
 
