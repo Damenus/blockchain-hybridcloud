@@ -1,18 +1,3 @@
-# Copyright 2018 Intel Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# -----------------------------------------------------------------------------
-
 import hashlib
 import logging
 
@@ -20,27 +5,20 @@ from sawtooth_sdk.processor.exceptions import InternalError
 
 LOGGER = logging.getLogger(__name__)
 
-FAMILY_NAME = 'hdfssb'
-NODE_NAMESPACE = hashlib.sha512('hdfssb'.encode("utf-8")).hexdigest()[0:6]
+FAMILY_NAME_NAMESPACE = hashlib.sha512('hdfssb'.encode("utf-8")).hexdigest()[0:6]
+NODE_NAMESPACE = hashlib.sha512('node'.encode("utf-8")).hexdigest()[0:4]
 
 
-def _make_node_address(name):
-    return NODE_NAMESPACE + \
-           hashlib.sha512(name.encode('utf-8')).hexdigest()[:64]
+def make_node_address(name):
+    return FAMILY_NAME_NAMESPACE + NODE_NAMESPACE + hashlib.sha512(name.encode('utf-8')).hexdigest()[0:60]
 
 
-# class Game:
-#     def __init__(self, name, board, state, player1, player2):
-#         self.name = name
-#         self.board = board
-#         self.state = state
-#         self.player1 = player1
-#         self.player2 = player2
-
-# /root
+# /root/{cluster_name}/{node_name}
+# 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
+# storage volume
 class Node:
     def __init__(self, node_name, capacity, taken_space, reversed_space, last_update):
-        self.node_name = node_name  # 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
+        self.node_name = node_name
         self.capacity = capacity
         self.taken_space = taken_space
         self.reversed_space = reversed_space
@@ -105,7 +83,7 @@ class NodeState:
         return self._load_nodes(node_name=game_name).get(game_name)
 
     def _store_node(self, game_name, games):
-        address = _make_node_address(game_name)
+        address = make_node_address(game_name)
 
         state_data = self._serialize(games)
 
@@ -116,7 +94,7 @@ class NodeState:
             timeout=self.TIMEOUT)
 
     def _delete_node(self, game_name):
-        address = _make_node_address(game_name)
+        address = make_node_address(game_name)
 
         self._context.delete_state(
             [address],
@@ -125,7 +103,7 @@ class NodeState:
         self._address_cache[address] = None
 
     def _load_nodes(self, node_name):
-        address = _make_node_address(node_name)
+        address = make_node_address(node_name)
 
         if address in self._address_cache:
             if self._address_cache[address]:
