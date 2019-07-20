@@ -1,124 +1,42 @@
+import pathlib
 import subprocess
 import os
-import ast
-import hashlib
-import json
-
+import logging
 import socket
-
-import requests
-import yaml
-import base64
 
 import simplejson as simplejson
 
+from hdfssb.hdfssb.client.hdfssb_client import *
+from hdfssb.hdfssb.common.buffer import *
+from hdfssb.hdfssb.common.hash import sha1_file
 
-class Buffer:
-    def __init__(self,s):
-        '''Buffer a pre-created socket.
-        '''
-        self.sock = s
-        self.buffer = b''
-
-    def get_bytes(self,n):
-        '''Read exactly n bytes from the buffered socket.
-           Return remaining buffer if <n bytes remain and socket closes.
-        '''
-        while len(self.buffer) < n:
-            data = self.sock.recv(1024)
-            if not data:
-                data = self.buffer
-                self.buffer = b''
-                return data
-            self.buffer += data
-        # split off the message bytes from the buffer.
-        data,self.buffer = self.buffer[:n],self.buffer[n:]
-        return data
-
-    def put_bytes(self,data):
-        self.sock.sendall(data)
-
-    def get_utf8(self):
-        '''Read a null-terminated UTF8 data string and decode it.
-           Return an empty string if the socket closes before receiving a null.
-        '''
-        while b'\x00' not in self.buffer:
-            data = self.sock.recv(1024)
-            if not data:
-                return ''
-            self.buffer += data
-        # split off the string from the buffer.
-        data,_,self.buffer = self.buffer.partition(b'\x00')
-        return data.decode()
-
-    def put_utf8(self,s):
-        if '\x00' in s:
-            raise ValueError('string contains delimiter(null)')
-        self.sock.sendall(s.encode() + b'\x00')
-
-
-def _hash(data):
-    return hashlib.sha512(data).hexdigest()
-
-
-def balance(self):
-    FAMILY_NAME = 'hdfssb'
-
-    address = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
-              _hash(self._publicKey.encode('utf-8'))[0:64]
-
-    result = _send_to_restapi(
-        "state/{}".format(address))
-    try:
-        return base64.b64decode(yaml.safe_load(result)["data"])
-
-    except BaseException:
-        return None
-
-
-def _send_to_restapi(self,
-                     suffix,
-                     data=None,
-                     contentType=None):
-    '''Send a REST command to the Validator via the REST API.'''
-
-    if self._baseUrl.startswith("http://"):
-        url = "{}/{}".format(self._baseUrl, suffix)
-    else:
-        url = "http://{}/{}".format(self._baseUrl, suffix)
-
-    headers = {}
-
-    if contentType is not None:
-        headers['Content-Type'] = contentType
-
-    try:
-        if data is not None:
-            result = requests.post(url, headers=headers, data=data)
-        else:
-            result = requests.get(url, headers=headers)
-
-        if not result.ok:
-            raise Exception("Error {}: {}".format(
-                result.status_code, result.reason))
-
-    except requests.ConnectionError as err:
-        raise Exception(
-            'Failed to connect to {}: {}'.format(url, str(err)))
-
-    except BaseException as err:
-        raise Exception(err)
-
-    return result.text
+logging.basicConfig(level=logging.DEBUG)
 
 
 def main():
+    send_file()
+    download_file()
+
+
+def send_file():
+    key_file = 'key.priv'
+    url_ledger_node = '127.22.0.1:8008'
+    user = 'ddarczuk'
+    file_name = 'SampleAudio_0.7mb.mp3'
+    HOST = socket.gethostname()
+    PORT = 60000
+
+    owner_folder = './tmp_send/' + user + '/'
+    folder = owner_folder + file_name + '/'
+    pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
+
+    # 1. Encode file by raptor
+
     # s = min(file_size - 1, 65528) # 65528 is 2^16 - 8, max uint16_t
     # s = s - s mod 8
-    file_name = 'SampleAudio_0.7mb.mp3'
     file_size = os.path.getsize(file_name)
     s = min(file_size - 1, 65528)
-    s = s - s % 8
+    s = s - (s % 8)
 
     ###
     # liczba nodów
@@ -128,143 +46,87 @@ def main():
     # procent bloków do pirvate
     # (blocks - (blocks*drop_rate)) / nodes > repair-symbols-rate
 
-    #  ./rq --debug encode -s1600 -m200 --repair-symbols-rate 1 --drop-rate 0.5 README.rst README.rst.enc
+    #  ./python-libraptorq/rq --debug encode -s1600 -m200 --repair-symbols-rate 1 --drop-rate 0.5 README.rst README.rst.enc
 
     # launch your python2 script using bash
-    encode = """
-    ./python-libraptorq/rq \
+    encode = """./python-libraptorq/rq \
     --debug \
     encode \
     -s{s} \
     -m200 \
     --repair-symbols-rate 1 \
-    --drop-rate 0.5 \
     {path_src} \
-    {path_dst}
-    """.format(s=s, path_src=file_name, path_dst=file_name+'.enc')
+    {path_dst}""".format(s=s, path_src=file_name, path_dst=owner_folder + file_name+'.enc') #.split("\n")  # --drop-rate 0.5 \
 
-    decode = """
-    ./python-libraptorq/rq \
-    --debug \
-    decode \
-    {path_src} \
-    {path_dst}
-    """.format(path_src='dd2/enc', path_dst='dd2/dec')
-    #""".format(path_src=file_name+'.enc', path_dst=file_name+'.dec')
-
-    process = subprocess.Popen(encode.split(), stdout=subprocess.PIPE)
+    process = subprocess.Popen(encode, stdout=subprocess.PIPE, shell=True)
     output, error = process.communicate()  # receive output from the python2 script
 
     # "needed: >(\d*),"
     # dla małych plików jak mp3
     # file_encoded_map = os.read_fiel as map
 
-    # with open(file_name+'.enc', 'r') as myfile:
-    #     data = myfile.read()
-    #
-    # mapa = ast.literal_eval(data)
+    # 2. Load encoded file and split blocks to files
 
-    with open(file_name + '.enc', 'r') as myfile:
+    with open(owner_folder + file_name+'.enc', 'r') as myfile:
         mapa = json.load(myfile)
 
-
-    user = 'ddarczuk'
-    #file_name
-    #hash
-
-    i = 0
     for block in mapa['symbols']:
-        # hash_object = hashlib.sha1(bytes(block[1]))
-        # hex_dig = hash_object.hexdigest()
-        # print(hex_dig)
-
-        name = user + '-' + file_name + '-' + str(i)
-        i += 1
-        # f = open('dd/'+name, "w+")
-        # f.write(str(block))
-        # f.close()
-        with open('dd/'+name, "w+") as json_file:
-            json.dump(block, json_file)
+        block_string = json.dumps(block)
+        hash_name = hashlib.sha1(str.encode(block_string)).hexdigest()
+        with open(folder + hash_name, "w+") as file:
+            file.write(block_string)
+        logging.info("Create block ", block_string)
 
     del mapa['symbols']
-    # f = open('dd/head', "w+")
-    # f.write(str(mapa))
-    # f.close()
-    with open('dd2/head', "w+") as json_file:
-        json.dump(mapa, json_file)
+    logging.info("MAPA: ", mapa)
 
+    # 3. Read ledger, to find nodes where send blocks
 
-############## READ ledger (first)
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
 
-    balance()
+    nodes = hdfssb_client.list_nodes()
+    logging.info("Nodes ", nodes)
 
-################ Save information in ledger
+    valid_nodes = []
+    for node in nodes:
+        node = node.decode().split(",")
+        #if node[] # dodaj jeśli jest wolne miejsce na nodzie i dodaj procent private i publick
+        valid_nodes.append(node[0])
 
+    # 4. Assign blocks to nodes
 
-############### READ ledger (second)
+    dict_block_to_node = {}
+    length = len(valid_nodes)
+    i = 0
+    files_names = os.listdir(folder)
 
+    for block in files_names:
+        dict_block_to_node[block] = valid_nodes[i]
+        i += 1
+        if i == length:
+            i = 0
 
+    # 5. Save information in ledger
 
-################ Send file
-    # for filename in os.listdir('dd'):
-    #     # with open('dd/'+filename, 'r') as myfile:
-    #     #     data = myfile.read()
-    #     with open('dd/' + filename, 'r') as myfile:
-    #         data = json.load(myfile)
-    #         mapa['symbols'].append(data)
-    #
+    file_to_send = dict(file_name=file_name,
+                        owner=user,
+                        state="requested",
+                        size=file_size,
+                        file_hash=sha1_file(file_name),
+                        blocks_of_file=dict_block_to_node,
+                        checksums=mapa['checksums']['sha256'],
+                        data_bytes=mapa['data_bytes'],
+                        oti_common=mapa['oti_common'],
+                        oti_scheme=mapa['oti_scheme'],
+                        last_update=str(time.time()))
+    logging.info(file_to_send)
+    tx = hdfssb_client.add_file(name=file_name, payload_object=file_to_send)
+    logging.info("Add file ", tx)
+    hdfssb_client.wait_for_transaction(tx)
 
+    # 6. Send file
 
-    # hosts = ['127.0.1.1']
-    #
-    # s = socket.socket()  # Create a socket object
-    # host = '127.0.1.1'  # '10.1.1.8' #socket.gethostname()     # Get local machine name
-    # port = 60000  # Reserve a port for your service.
-    #
-    # for filename in os.listdir('dd'):
-    #     s.connect((host, port))
-    #     s.send((filename+'???').encode())
-    #     with open('dd/' + filename, 'rb') as f:
-    #         l = f.read(1024)
-    #         while (l):
-    #             s.send(l)
-    #             # print('Sent ', repr(l))
-    #             l = f.read(1024)
-    #     s.close()
-
-    HOST = socket.gethostname()
-    PORT = 60000
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, PORT))
-
-    with s:
-        sbuf = Buffer(s)
-
-        # hash_type = input('Enter hash type: ')
-        #
-        # files = input('Enter file(s) to send: ')
-        # files_to_send = files.split()
-
-        for file_name in os.listdir('dd'):
-            print(file_name)
-            # sbuf.put_utf8(hash_type)
-            sbuf.put_utf8(file_name)
-
-            file_size = os.path.getsize('dd/'+file_name)
-            sbuf.put_utf8(str(file_size))
-
-            with open('dd/'+file_name, 'rb') as f:
-                sbuf.put_bytes(f.read())
-            print('File Sent')
-
-################# Recive file
-
-
-    PORT = 60002
-
-    for file_name in os.listdir('dd'):
-        print(file_name)
+    for block in os.listdir(folder):
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((HOST, PORT))
@@ -272,12 +134,53 @@ def main():
         with s:
             sbuf = Buffer(s)
 
+            print(block)
 
-            # sbuf.put_utf8(hash_type)
             sbuf.put_utf8(file_name)
 
-            with open('./dd3/'+file_name, 'wb+') as f:
-                remaining = file_size
+            file_size = os.path.getsize(folder + block)
+            sbuf.put_utf8(str(file_size))
+
+            with open(folder + block, 'rb') as f:
+                sbuf.put_bytes(f.read())
+            print('File Sent')
+
+
+def download_file():
+    HOST = socket.gethostname()
+    PORT = 60002
+    file_name = 'SampleAudio_0.7mb.mp3'
+    key_file = 'key.priv'
+    url_ledger_node = '127.22.0.1:8008'
+
+    # 1. Find where file is
+
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
+
+    file_metadata = hdfssb_client.show_file(file_name)
+    print("Show file ", file_metadata)
+
+    file_size = file_metadata['size']
+
+    # 2. For each block, connect to node and download
+
+    owner_folder = './tmp_download/' + file_metadata['owner'] + '/'
+    folder = owner_folder + file_metadata['file_name'] + '/'
+    pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
+
+    for block_hash, node in file_metadata["blocks_of_file"].items():
+        print(block_hash + ":" + node)
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((HOST, PORT))
+
+        with s:
+            sbuf = Buffer(s)
+
+            sbuf.put_utf8(file_metadata["owner"] + "/" + file_metadata["file_name"] + "/" + block_hash)
+
+            with open(folder + block_hash, 'wb+') as f:
+                remaining = int(file_size) + 4000
                 while remaining:
                     chunk_size = 4096 if remaining >= 4096 else remaining
                     chunk = sbuf.get_bytes(chunk_size)
@@ -291,40 +194,39 @@ def main():
             print('Connection closed.')
 
 
-###############
+    # 3. Restore raptor file
 
+    mapa = {'checksums': {'sha256': file_metadata['checksums']},
+            'data_bytes': int(file_metadata['data_bytes']),
+            'oti_common': int(file_metadata['oti_common']),
+            'oti_scheme': int(file_metadata['oti_scheme']),
+            'symbols': []}
 
+    time.sleep(3)
 
-    # with open('dd/head', 'r') as myfile:
-    #     data = myfile.read()
-    #
-    # mapa = ast.literal_eval(data)
-    with open('dd2/head', 'r') as myfile:
-        mapa = json.load(myfile)
-
-    mapa['symbols'] = []
-    print(mapa)
-
-    for filename in os.listdir('dd'):
-        # with open('dd/'+filename, 'r') as myfile:
-        #     data = myfile.read()
-        with open('dd/'+filename, 'r') as myfile:
+    for filename in os.listdir(folder):
+        with open(folder + filename, 'r') as myfile:
             data = json.load(myfile)
             mapa['symbols'].append(data)
 
-    # f = open('dd/enc', "w+")
-    # f.write(str(mapa))
-    # f.close()
-    with open('dd2/enc', "w+") as json_file:
-        json.dump(mapa, json_file)
+    # with open(owner_folder + 'enc', "w+") as json_file:
+    #     json.dump(mapa, json_file)
 
-    # now write output to a file
-    twitterDataFile = open("dd2/enc2", "w")
-    # magic happens here to make it pretty-printed
-    twitterDataFile.write(simplejson.dumps(mapa, indent=4, sort_keys=True))
-    twitterDataFile.close()
+    encoded_file_name = owner_folder + file_name + '.encoded_file'
 
-    process = subprocess.Popen(decode.split(), stdout=subprocess.PIPE)
+    with open(encoded_file_name, "w") as twitterDataFile:
+        # magic happens here to make it pretty-printed
+        twitterDataFile.write(simplejson.dumps(mapa, indent=4, sort_keys=True))
+
+    # 4. Decode file
+
+    decode = """./python-libraptorq/rq \
+        --debug \
+        decode \
+        {path_src} \
+        {path_dst}""".format(path_src=encoded_file_name, path_dst=owner_folder + file_name + '.decoded')
+
+    process = subprocess.Popen(decode, stdout=subprocess.PIPE, shell=True)
     output, error = process.communicate()  # receive output from the python2 script
 
 

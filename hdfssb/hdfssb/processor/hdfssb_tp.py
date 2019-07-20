@@ -148,10 +148,14 @@ class SimpleWalletTransactionHandler(TransactionHandler):
         size = payload_map['size']
         file_hash = payload_map['file_hash']
         blocks_of_file = payload_map['blocks_of_file']
+        checksums = payload_map['checksums']
+        data_bytes = payload_map['data_bytes']
+        oti_common = payload_map['oti_common']
+        oti_scheme = payload_map['oti_scheme']
         last_update = payload_map['last_update']
 
         file = File(file_name=name, owner=owner, state=state, size=size, file_hash=file_hash,
-                    blocks_of_file=blocks_of_file, last_update=last_update)
+                    blocks_of_file=blocks_of_file, checksums=checksums, data_bytes=data_bytes, oti_common=oti_common, oti_scheme=oti_scheme, last_update=last_update)
         list_nodes = files_state.set_game(name, file)
 
         node_name_address = _get_file_address(name)
