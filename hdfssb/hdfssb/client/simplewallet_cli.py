@@ -34,6 +34,7 @@ from simplewallet_client import SimpleWalletClient
 DISTRIBUTION_NAME = 'simplewallet'
 
 DEFAULT_URL = 'http://k8s-sawtooth-2:31454'
+DEFAULT_URL = 'http://172.17.0.1:8008'
 
 def create_console_handler(verbose_level):
     clog = logging.StreamHandler()

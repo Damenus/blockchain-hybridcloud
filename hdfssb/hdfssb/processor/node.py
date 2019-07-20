@@ -17,8 +17,9 @@ def make_node_address(name):
 # 10.12.1.1:{capacity:12341; taken:132; reserved:123; last_update:15001231242}
 # storage volume
 class Node:
-    def __init__(self, node_name, capacity, taken_space, reversed_space, last_update):
+    def __init__(self, node_name, cluster, capacity, taken_space, reversed_space, last_update):
         self.node_name = node_name
+        self.cluster = cluster
         self.capacity = capacity
         self.taken_space = taken_space
         self.reversed_space = reversed_space
@@ -141,9 +142,9 @@ class NodeState:
         nodes = {}
         try:
             for node in data.decode().split("|"):
-                node_name, capacity, taken_space, reversed_space, last_update = node.split(",")
+                node_name, cluster, capacity, taken_space, reversed_space, last_update = node.split(",")
 
-                nodes[node_name] = Node(node_name, capacity, taken_space, reversed_space, last_update)
+                nodes[node_name] = Node(node_name, cluster, capacity, taken_space, reversed_space, last_update)
         except ValueError:
             raise InternalError("Failed to deserialize game data")
 
@@ -162,7 +163,7 @@ class NodeState:
         node_strs = []
         for name, g in nodes.items():
             node_str = ",".join(
-                [name, str(g.capacity), str(g.taken_space), str(g.reversed_space), str(g.last_update)])
+                [name, str(g.cluster), str(g.capacity), str(g.taken_space), str(g.reversed_space), str(g.last_update)])
             node_strs.append(node_str)
 
         return "|".join(sorted(node_strs)).encode()

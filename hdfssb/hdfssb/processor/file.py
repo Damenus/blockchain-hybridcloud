@@ -14,7 +14,7 @@ def make_file_address(name):
 
 # /{owner}/{file_name}/{block}
 class File:
-    def __init__(self, file_name, owner, state, size, file_hash, blocks_of_file, last_update):
+    def __init__(self, file_name, owner, state, size, file_hash, blocks_of_file, checksums, data_bytes, oti_common, oti_scheme, last_update):
         self.file_name = file_name
         self.owner = owner
         self.state = state
@@ -22,6 +22,11 @@ class File:
         self.size = size
         self.file_hash = file_hash
         self.blocks_of_file = blocks_of_file  # {} as23d1:10.1.1.0, da1d2:10.1.1.1
+        #self.head = head # {"checksums": {"sha256": "QTyzVdlbRpxlL4KjLxizXUJYavb3sobmhylneySfz1w="}, "data_bytes": 441, "oti_common": 13258879585426079744, "oti_scheme": 67174401}
+        self.checksums = checksums
+        self.data_bytes = data_bytes
+        self.oti_common = oti_common
+        self. oti_scheme = oti_scheme
         self.last_update = last_update
 
 
@@ -144,14 +149,14 @@ class FileState:
         nodes = {}
         try:
             for node in data.decode().split("|"):
-                file_name, owner, state, state, size, file_hash, blocks_str, last_update = node.split(",")
+                file_name, owner, state, state, size, file_hash, blocks_str, checksums, data_bytes, oti_common, oti_scheme, last_update = node.split(",")
                 blocks = blocks_str.split("+")
                 blocks_of_file = {}
                 for pair in blocks:
                     block, node = pair.split(":")
                     blocks_of_file[block] = node
 
-                nodes[file_name] = File(file_name, owner, state, size, file_hash, blocks_of_file, last_update)
+                nodes[file_name] = File(file_name, owner, state, size, file_hash, blocks_of_file, checksums, data_bytes, oti_common, oti_scheme, last_update)
         except ValueError:
             raise InternalError("Failed to deserialize game data")
 
@@ -176,7 +181,7 @@ class FileState:
             blocks_str = "+".join(blocks)
             node_str = ",".join(
                 [name, str(g.owner), str(g.state), str(g.state), str(g.size), str(g.file_hash), str(blocks_str),
-                 str(g.last_update)]
+                 str(g.checksums), str(g.data_bytes), str(g.oti_common), str(g.oti_scheme), str(g.last_update)]
                 )
             node_strs.append(node_str)
         return "|".join(sorted(node_strs)).encode()

@@ -157,14 +157,14 @@ class HdfssbClient:
         nodes = {}
         try:
             for node in list_files:
-                file_name, owner, state, state, size, file_hash, blocks_str, last_update = node.decode().split(",")
+                file_name, owner, state, state, size, file_hash, blocks_str, checksums, data_bytes, oti_common, oti_scheme, last_update = node.decode().split(",")
                 blocks = blocks_str.split("+")
                 blocks_of_file = {}
                 for pair in blocks:
                     block, node = pair.split(":")
                     blocks_of_file[block] = node
 
-                nodes[file_name] = [file_name, owner, state, size, file_hash, blocks_of_file, last_update]
+                nodes[file_name] = [file_name, owner, state, size, file_hash, blocks_of_file, checksums, data_bytes, oti_common, oti_scheme, last_update]
         except ValueError:
             raise InternalError("Failed to deserialize game data")
 
@@ -188,6 +188,37 @@ class HdfssbClient:
 
         except BaseException:
             return None
+
+    def show_file(self, name, auth_user=None, auth_password=None):
+        address = self._get_address_file(name)
+
+        result = self._send_request(
+            "state/{}".format(address),
+            name=name,
+            auth_user=auth_user,
+            auth_password=auth_password)
+        try:
+            file = base64.b64decode(yaml.safe_load(result)["data"])
+
+            file_name, owner, state, state, size, file_hash, blocks_str, checksums, data_bytes, oti_common, oti_scheme, last_update = file.decode().split(",")
+            blocks = blocks_str.split("+")
+            blocks_of_file = {}
+            for pair in blocks:
+                block, node = pair.split(":")
+                blocks_of_file[block] = node
+
+            file_json = {"file_name": file_name, 'owner': owner, 'state': state, 'size': size, 'file_hash': file_hash,
+                         'blocks_of_file': blocks_of_file, 'checksums': checksums, 'data_bytes': data_bytes,
+                         'oti_common': oti_common, 'oti_scheme': oti_scheme, 'last_update': last_update}
+
+            #head = {'checksums': {"sha256": checksums}, 'data_bytes': int(data_bytes), 'oti_common': int(oti_common), 'oti_scheme': int(oti_scheme)}
+
+            return file_json
+
+        except BaseException:
+            return None
+        except ValueError:
+            raise InternalError("Failed to deserialize game data")
 
     def _send_request(self,
                       suffix,
