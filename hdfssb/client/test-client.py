@@ -1,5 +1,9 @@
+import time
+
+from hdfssb.client.hdfssb_client import HdfssbClient
+
 print('Registring...')
-dd = HdfssbClient(base_url='127.22.0.1:8008', keyfile='key.priv')
+dd = HdfssbClient(base_url='127.22.0.1:8008', keyfile='root.priv')
 
 
 file_to_send = dict(file_name="file1", owner="dd",

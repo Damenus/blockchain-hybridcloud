@@ -14,7 +14,29 @@ spec:
         app: hdfssb-daemon # has to match .spec.selector.matchLabels
     spec:
       terminationGracePeriodSeconds: 10
+      initContainers:
+        - name: create-private-key
+          image: damenus/hdfssb-processor:0.3
+          command: ["/bin/bash"]
+            args: ["-c","sawtooth keygen --key-dir . "]
+
       containers:
+        - name: buzzy
+          image: damenus/hdfssb-processor:0.3
+#          imagePullPolicy: Always
+          ports:
+            - containerPort: 60000
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+          env:
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command: ["/bin/bash"]
+          args: ["-c","sleep inf"]
         - name: reciver
           image: damenus/hdfssb-processor:0.3
 #          imagePullPolicy: Always
@@ -30,7 +52,7 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
           command: ["/bin/bash"]
-          args: ["-c","sleep 3600"]
+          args: ["-c","export PYTHONPATH=.. ; python3 daemon/main.py"]
         - name: sender
           image: damenus/hdfssb-processor:0.3
 #          imagePullPolicy: Always
@@ -46,8 +68,8 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
           command: ["/bin/bash"]
-          args: ["-c","sleep 3600"]
-          #  export PYTHONPATH=.. ; python3 hdfssb/daemon/main2.py
+          args: ["-c","export PYTHONPATH=.. ; python3 daemon/main2.py"]
+          #  export PYTHONPATH=.. ; python3 daemon/main2.py
       volumes:
         - name: host-path
           hostPath:

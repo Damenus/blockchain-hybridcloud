@@ -349,4 +349,5 @@ class HdfssbClient:
             status = text_result["data"][0]["status"]
             print(status)
             numer_attamps += 1
+            time.sleep(1)
 

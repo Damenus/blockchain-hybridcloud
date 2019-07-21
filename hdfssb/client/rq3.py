@@ -3,11 +3,13 @@ import subprocess
 import os
 import logging
 import socket
+import json
 
 import simplejson as simplejson
 
 from hdfssb.common.buffer import *
 from hdfssb.common.hash import sha1_file
+from hdfssb.client.hdfssb_client import *
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -18,7 +20,7 @@ def main():
 
 
 def send_file():
-    key_file = 'key.priv'
+    key_file = 'root.priv'
     url_ledger_node = '127.22.0.1:8008'
     user = 'ddarczuk'
     file_name = 'SampleAudio_0.7mb.mp3'
@@ -149,7 +151,7 @@ def download_file():
     HOST = socket.gethostname()
     PORT = 60002
     file_name = 'SampleAudio_0.7mb.mp3'
-    key_file = 'key.priv'
+    key_file = 'root.priv'
     url_ledger_node = '127.22.0.1:8008'
 
     # 1. Find where file is
@@ -171,7 +173,7 @@ def download_file():
         print(block_hash + ":" + node)
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((HOST, PORT))
+        s.connect((node, PORT))
 
         with s:
             sbuf = Buffer(s)
@@ -201,12 +203,15 @@ def download_file():
             'oti_scheme': int(file_metadata['oti_scheme']),
             'symbols': []}
 
-    time.sleep(3)
+    time.sleep(5)
 
     for filename in os.listdir(folder):
         with open(folder + filename, 'r') as myfile:
-            data = json.load(myfile)
-            mapa['symbols'].append(data)
+            try:
+                data = json.load(myfile)
+                mapa['symbols'].append(data)
+            except:
+                logging.error("Not read blopck", filename)
 
     # with open(owner_folder + 'enc', "w+") as json_file:
     #     json.dump(mapa, json_file)

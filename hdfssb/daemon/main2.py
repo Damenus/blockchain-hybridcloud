@@ -29,9 +29,12 @@ while True:
     file_name = os.path.join(DIR,file_name)
     print('file name: ', file_name)
 
-    with open(file_name, 'rb') as f:
-        connbuf.put_bytes(f.read())
-    print('File Sent')
+    try:
+        with open(file_name, 'rb') as f:
+            connbuf.put_bytes(f.read())
+        print('File Sent')
+    except FileNotFoundError:
+        logging.error("NO file", file_name)
 
     print('Connection closed.')
     conn.close()

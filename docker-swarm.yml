@@ -41,11 +41,11 @@ services:
     entrypoint: xo-tp-python -vv -C tcp://validator:4004
 
   hdfssb-tp:
-    image: damenus/hdfssb-processor:0.2
+    image: damenus/hdfssb-processor:0.3
     container_name: hdfssb-tp
     depends_on:
       - validator
-    entrypoint: env PYTHONPATH=.. python3 ./hdfssb/processor/hdfssb_tp.py -C tcp://validator:4004
+    entrypoint: env PYTHONPATH=.. python3 ./processor/hdfssb_tp.py -C tcp://validator:4004
 
   validator:
     image: hyperledger/sawtooth-validator:1.0
