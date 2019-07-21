@@ -57,6 +57,11 @@ RUN apt-get update
 RUN apt-get install -y sawtooth
 RUN apt-get install -y vim
 
+RUN apt-get install -y -q \
+    python3-simplejson
+
+# 9f20b034aca:/project# export PYTHONPATH=. ; python3 hdfssb/hdfssb/client/rq3.py
+
 RUN mkdir -p /var/log/sawtooth
 
 ENV PATH=$PATH:/project/hdfssb
@@ -65,9 +70,9 @@ WORKDIR /project/hdfssb
 
 COPY . .
 
-EXPOSE 4004/tcp
+#EXPOSE 4004/tcp
 
-CMD bash -c 'python3 ./hdfssb/processor/simple.py'
+#CMD bash -c 'python3 ./hdfssb/processor/simple.py'
 
 #CMD echo "\033[0;32m--- Building xo-tp-python ---\n\033[0m" \
 # && bin/protogen \

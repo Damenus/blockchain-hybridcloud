@@ -1,22 +1,57 @@
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
-  name: daemon
+  name: hdfssb-daemon
 spec:
-  containers:
-    - name: daemon
-      image: damenus/daemon:0.1
-      imagePullPolicy: Always
-      ports:
-        - containerPort: 60000
-          name: "tcp-connection"
-      volumeMounts:
+  selector:
+    matchLabels:
+      app: hdfssb-daemon # has to match .spec.template.metadata.labels
+  serviceName: "hdfssb-daemon"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hdfssb-daemon # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: reciver
+          image: damenus/hdfssb-processor:0.3
+#          imagePullPolicy: Always
+          ports:
+            - containerPort: 60000
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+          env:
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command: ["/bin/bash"]
+          args: ["-c","sleep 3600"]
+        - name: sender
+          image: damenus/hdfssb-processor:0.3
+#          imagePullPolicy: Always
+          ports:
+            - containerPort: 60002
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+          env:
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command: ["/bin/bash"]
+          args: ["-c","sleep 3600"]
+          #  export PYTHONPATH=.. ; python3 hdfssb/daemon/main2.py
+      volumes:
         - name: host-path
-          mountPath: /daemon/daemon_dir
-  volumes:
-    - name: host-path
-      hostPath:
-        path: /daemon/daemon_dir
+          hostPath:
+            path: /daemon/daemon_dir
 #    - name:  example-local-pv
 #      persistentVolumeClaim:
 #       claimName:  example-local-pv
@@ -25,12 +60,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: daemon-service
+  name: hdfssb-daemon
   labels:
-    run: daemon
+    run: hdfssb-daemon
 spec:
+  clusterIP: None
   ports:
-  - port: 60000
+  - name: reciver-port
+    port: 60000
+    protocol: TCP
+  - name: sender-port
+    port: 60002
     protocol: TCP
   selector:
-    run: daemon
+    run: hdfssb-daemon

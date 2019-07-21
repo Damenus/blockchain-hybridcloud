@@ -4,37 +4,12 @@ import os
 
 import pathlib
 
-import hashlib
-import base64
-from base64 import b64encode
 import time
-import random
-import requests
-import yaml
-
-import hashlib
-import base64
-import random
-import requests
-import yaml
-import json
-
-from sawtooth_signing import create_context
-from sawtooth_signing import CryptoFactory
-from sawtooth_signing import ParseError
-from sawtooth_signing.secp256k1 import Secp256k1PrivateKey
-
-from sawtooth_sdk.protobuf.transaction_pb2 import TransactionHeader
-from sawtooth_sdk.protobuf.transaction_pb2 import Transaction
-from sawtooth_sdk.protobuf.batch_pb2 import BatchList
-from sawtooth_sdk.protobuf.batch_pb2 import BatchHeader
-from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
 from shutil import copyfile
 
-from hdfssb.hdfssb.client.hdfssb_client import *
-from hdfssb.hdfssb.common.buffer import *
-from hdfssb.hdfssb.common.hash import *
+from hdfssb.common.buffer import *
+from hdfssb.common.hash import *
 
 def _sha512(data):
     return hashlib.sha512(data).hexdigest()
@@ -46,17 +21,19 @@ class XoException(Exception):
 
 FAMILY_NAME = 'hdfssb'
 
+key_file = 'key.priv'
+url_ledger_node = '127.22.0.1:8008'
+name = socket.gethostname()  # "node5"
+
 logging.basicConfig(level=logging.DEBUG)
 
 print('Registring...')
-name = "node5"
-dd = HdfssbClient(base_url='127.22.0.1:8008', keyfile='key.priv')
+hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
 new_node = dict(node_name=name, cluster="private", capacity=1000, taken_space=0, reversed_space=0, last_update=str(time.time()))
 print(new_node)
-asd = dd.add_node(name=name, payload_object=new_node)
+asd = hdfssb_client.add_node(name=name, payload_object=new_node)
 print("Add node ", asd)
-dd.wait_for_transaction(asd)
-print("Nodes ", dd.list_nodes())
+hdfssb_client.wait_for_transaction(asd)
 
 DIR = "/daemon/daemon_dir/"
 DIR = "./daemon/"
@@ -84,7 +61,7 @@ while True:
         file_size = int(connbuf.get_utf8())
         print('file size: ', file_size )
 
-        file = dd.show_file(file_name)
+        file = hdfssb_client.show_file(file_name)
         print("FILE block: ", file)
 
         sha1 = hashlib.sha1()

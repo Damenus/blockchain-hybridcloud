@@ -21,6 +21,8 @@ RUN apt-get install -y git
 #RUN python3.6 -m pip install wheel
 
 
+RUN pip install simplejson
+
 WORKDIR /hdfssb_client
 COPY . .
 RUN cp ./libRaptorQ.so* /usr/lib

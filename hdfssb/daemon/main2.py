@@ -2,7 +2,7 @@ import socket
 import logging
 import os
 
-from hdfssb.hdfssb.common.buffer import Buffer
+from hdfssb.common.buffer import Buffer
 
 
 logging.basicConfig(level=logging.DEBUG)
