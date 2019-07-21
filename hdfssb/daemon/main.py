@@ -10,6 +10,7 @@ from shutil import copyfile
 
 from hdfssb.common.buffer import *
 from hdfssb.common.hash import *
+from hdfssb.client.hdfssb_client import *
 
 def _sha512(data):
     return hashlib.sha512(data).hexdigest()
@@ -18,10 +19,11 @@ def _sha512(data):
 class XoException(Exception):
     pass
 
+# TODO: genereate key, changing ip to rest_api
 
 FAMILY_NAME = 'hdfssb'
 
-key_file = 'key.priv'
+key_file = 'root.priv'
 url_ledger_node = '127.22.0.1:8008'
 name = socket.gethostname()  # "node5"
 

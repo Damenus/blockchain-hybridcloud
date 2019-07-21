@@ -125,12 +125,13 @@ class SimpleWalletTransactionHandler(TransactionHandler):
     def _add_node(self, context, payload_map, from_key, node_state):
 
         name = payload_map['node_name']
+        cluster = payload_map['cluster']
         capacity = payload_map['capacity']
         taken_space = payload_map['taken_space']
         reversed_space = payload_map['reversed_space']
         last_update = payload_map['last_update']
 
-        node = Node(node_name=name, capacity=capacity, taken_space=taken_space, reversed_space=reversed_space, last_update=last_update)
+        node = Node(node_name=name, cluster=cluster, capacity=capacity, taken_space=taken_space, reversed_space=reversed_space, last_update=last_update)
         list_nodes = node_state.set_game(name, node)
 
         node_name_address = self._get_wallet_address(name)
