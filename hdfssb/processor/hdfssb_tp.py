@@ -1,12 +1,8 @@
-import time
 import traceback
 import sys
-import hashlib
-import logging
-import json
 
-from hdfssb.hdfssb.processor.node import *
-from hdfssb.hdfssb.processor.file import *
+from hdfssb.processor.node import *
+from hdfssb.processor.file import *
 
 from sawtooth_sdk.processor.handler import TransactionHandler
 from sawtooth_sdk.processor.exceptions import InvalidTransaction

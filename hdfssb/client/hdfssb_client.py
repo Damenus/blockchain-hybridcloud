@@ -1,17 +1,10 @@
-import hashlib
-import base64
 from base64 import b64encode
 import time
-import random
-import requests
-import yaml
 
-import hashlib
 import base64
 import random
 import requests
 import yaml
-import json
 
 from sawtooth_signing import create_context
 from sawtooth_signing import CryptoFactory
@@ -24,7 +17,7 @@ from sawtooth_sdk.protobuf.batch_pb2 import BatchList
 from sawtooth_sdk.protobuf.batch_pb2 import BatchHeader
 from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
-from hdfssb.hdfssb.processor.file import *
+from hdfssb.processor.file import *
 
 
 FAMILY_NAME = 'hdfssb'

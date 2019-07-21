@@ -6,9 +6,8 @@ import socket
 
 import simplejson as simplejson
 
-from hdfssb.hdfssb.client.hdfssb_client import *
-from hdfssb.hdfssb.common.buffer import *
-from hdfssb.hdfssb.common.hash import sha1_file
+from hdfssb.common.buffer import *
+from hdfssb.common.hash import sha1_file
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -125,11 +124,11 @@ def send_file():
     hdfssb_client.wait_for_transaction(tx)
 
     # 6. Send file
-
-    for block in os.listdir(folder):
+    # for block, node in os.listdir(folder):
+    for block, node in dict_block_to_node.items():
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((HOST, PORT))
+        s.connect((node, PORT))
 
         with s:
             sbuf = Buffer(s)
