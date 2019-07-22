@@ -8,7 +8,7 @@ from hdfssb.common.buffer import Buffer
 logging.basicConfig(level=logging.DEBUG)
 
 DIR = "/daemon/daemon_dir/"
-DIR = "./daemon/"
+DIR = "/project/hdfssb/daemon/daemon/"  # "./daemon/"
 
 port = 60002  # Reserve a port for your service.
 s = socket.socket()  # Create a socket object

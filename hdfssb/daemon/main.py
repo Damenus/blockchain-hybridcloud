@@ -19,12 +19,11 @@ def _sha512(data):
 class XoException(Exception):
     pass
 
-# TODO: genereate key, changing ip to rest_api
 
 FAMILY_NAME = 'hdfssb'
 
-key_file = 'root.priv'
-url_ledger_node = '127.22.0.1:8008'
+key_file = os.getenv('KEY_PATH', 'root.priv')
+url_ledger_node = os.getenv('URL_LEDGER_NODE', '127.22.0.1:8008')
 name = socket.gethostname()  # "node5"
 
 logging.basicConfig(level=logging.DEBUG)

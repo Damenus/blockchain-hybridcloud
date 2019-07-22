@@ -1,3 +1,4 @@
+import argparse
 import pathlib
 import subprocess
 import os
@@ -15,15 +16,29 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def main():
-    send_file()
-    download_file()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(dest='command', help="Command: send or download")
+    parser.add_argument(dest='file_name')
+    parser.add_argument(dest='user')
+    parser.add_argument(dest='url_ledger_node')
+    parser.add_argument(dest='key_file')
+
+    args = parser.parse_args()
+
+    if args.command == 'send':
+        send_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+    elif args.command == 'download':
+        download_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+
+# export PYTHONPATH=../.. ; python3 rq3.py send SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
+# export PYTHONPATH=../.. ; python3 rq3.py download SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
 
 
-def send_file():
-    key_file = 'root.priv'
-    url_ledger_node = '127.22.0.1:8008'
-    user = 'ddarczuk'
-    file_name = 'SampleAudio_0.7mb.mp3'
+def send_file(file_name, user, url_ledger_node, key_file):
+    #key_file = 'root.priv'
+    #url_ledger_node = '127.22.0.1:8008'
+    #user = 'ddarczuk'
+    #file_name = 'SampleAudio_0.7mb.mp3'
     HOST = socket.gethostname()
     PORT = 60000
 
@@ -147,12 +162,12 @@ def send_file():
             print('File Sent')
 
 
-def download_file():
+def download_file(file_name, user, url_ledger_node, key_file):
     HOST = socket.gethostname()
     PORT = 60002
-    file_name = 'SampleAudio_0.7mb.mp3'
-    key_file = 'root.priv'
-    url_ledger_node = '127.22.0.1:8008'
+    #file_name = 'SampleAudio_0.7mb.mp3'
+    #key_file = 'root.priv'
+    #url_ledger_node = '127.22.0.1:8008'
 
     # 1. Find where file is
 
