@@ -27,10 +27,16 @@ RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/ap
  && apt-get update \
  && apt-get upgrade -y
 
+RUN apt-get update
+
 RUN apt-get install -y -q \
     git \
     python3 \
-    python3-stdeb
+    python3-stdeb \
+    python \
+    python-pip
+
+RUN pip install libraptorq
 
 RUN apt-get install -y -q \
     python3-grpcio \
@@ -69,6 +75,9 @@ ENV PATH=$PATH:/project/hdfssb
 WORKDIR /project/hdfssb
 
 COPY . .
+
+COPY client/libRaptorQ.so /usr/lib/
+COPY client/libRaptorQ.so.0 /usr/lib/
 
 #EXPOSE 4004/tcp
 

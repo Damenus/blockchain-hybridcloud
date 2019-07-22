@@ -1,0 +1,121 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sawtooth-validator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: sawtooth-validator
+    spec:
+      containers:
+        - name: sawtooth-rest-api
+          image: hyperledger/sawtooth-rest-api:1.1
+          ports:
+            - name: api
+              containerPort: 8008
+          command:
+            - bash
+          args:
+            - -c
+            - "sawtooth-rest-api -B 0.0.0.0:8008 -v -C tcp://localhost:4004"
+
+        - name: hdfssb
+          image: damenus/hdfssb-processor:0.3
+          imagePullPolicy: Always
+          command:
+            - bash
+          args:
+            - -c
+            - "env PYTHONPATH=.. python3 ./processor/hdfssb_tp.py -C tcp://localhost:4004"
+
+        - name: sawtooth-settings-tp
+          image: hyperledger/sawtooth-settings-tp:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "settings-tp -vv -C tcp://localhost:4004"
+
+        - name: sawtooth-xo-tp-go
+          image: hyperledger/sawtooth-xo-tp-go:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "xo-tp-go -vv -C tcp://localhost:4004"
+
+        - name: sawtooth-validator
+          image: hyperledger/sawtooth-validator:1.1
+          ports:
+            - name: tp
+              containerPort: 4004
+            - name: consensus
+              containerPort: 5050
+            - name: validators
+              containerPort: 8800
+          command:
+            - bash
+          args:
+            - -c
+            - "sawadm keygen \
+            && sawtooth keygen my_key \
+            && sawset genesis -k /root/.sawtooth/keys/my_key.priv \
+            && sawadm genesis config-genesis.batch \
+            && sawtooth-validator -vv \
+                --endpoint tcp://0.0.0.0:8800 \
+                --bind component:tcp://0.0.0.0:4004 \
+                --bind consensus:tcp://0.0.0.0:5050 \
+                --bind network:tcp://0.0.0.0:8800"
+
+        - name: sawtooth-devmode-engine
+          image: hyperledger/sawtooth-devmode-engine-rust:1.1
+          command:
+            - bash
+          args:
+            - -c
+            - "devmode-engine-rust -C tcp://localhost:5050"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sawtooth-rest-api
+spec:
+  type: NodePort
+  selector:
+    name: sawtooth-validator
+  ports:
+    - name: "sawtooth-rest-api"
+      protocol: TCP
+      port: 8008
+      targetPort: 8008
+      nodePort: 31454
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sawtooth-validator
+spec:
+  type: ClusterIP
+  selector:
+    name: sawtooth-validator
+  ports:
+    - name: "sawtooth-rest-api"
+      protocol: TCP
+      port: 8008
+      targetPort: 8008
+    - name: "consensus"
+      protocol: TCP
+      port: 5050
+      targetPort: 5050
+    - name: "tp"
+      protocol: TCP
+      port: 4004
+      targetPort: 4004
+    - name: "validator"
+      protocol: TCP
+      port: 8800
+      targetPort: 8800
