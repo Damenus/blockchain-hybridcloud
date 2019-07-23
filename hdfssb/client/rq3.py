@@ -32,7 +32,7 @@ def main():
 
 # export PYTHONPATH=../.. ; python3 rq3.py send SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
 # export PYTHONPATH=../.. ; python3 rq3.py download SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
-
+# TODO: list fieles, list nodes,
 
 def send_file(file_name, user, url_ledger_node, key_file):
     #key_file = 'root.priv'
@@ -144,6 +144,7 @@ def send_file(file_name, user, url_ledger_node, key_file):
     # for block, node in os.listdir(folder):
     for block, node in dict_block_to_node.items():
 
+        # exception if not name know socket.gaierror: [Errno -2] Name or service not known
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((node, PORT))
 
