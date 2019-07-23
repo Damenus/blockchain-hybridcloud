@@ -7,7 +7,7 @@ spec:
     matchLabels:
       app: hdfssb-daemon # has to match .spec.template.metadata.labels
   serviceName: "hdfssb-daemon"
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -115,4 +115,4 @@ spec:
     port: 60002
     protocol: TCP
   selector:
-    run: hdfssb-daemon
+    app: hdfssb-daemon
