@@ -29,10 +29,24 @@ def main():
         send_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
     elif args.command == 'download':
         download_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+    elif args.command == 'list_files':
+        list_files(args.url_ledger_node, args.key_file)
+    elif args.command == 'list_nodes':
+        list_nodes(args.url_ledger_node, args.key_file)
 
 # export PYTHONPATH=../.. ; python3 rq3.py send SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
 # export PYTHONPATH=../.. ; python3 rq3.py download SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
-# TODO: list fieles, list nodes,
+
+
+def list_files(url_ledger_node, key_file):
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
+    print(hdfssb_client.list_files())
+
+
+def list_nodes(url_ledger_node, key_file):
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
+    print(hdfssb_client.list_nodes())
+
 
 def send_file(file_name, user, url_ledger_node, key_file):
     #key_file = 'root.priv'
@@ -144,23 +158,26 @@ def send_file(file_name, user, url_ledger_node, key_file):
     # for block, node in os.listdir(folder):
     for block, node in dict_block_to_node.items():
 
-        # exception if not name know socket.gaierror: [Errno -2] Name or service not known
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((node, PORT))
+        try:
+            # exception if not name know socket.gaierror: [Errno -2] Name or service not known
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((node, PORT))
 
-        with s:
-            sbuf = Buffer(s)
+            with s:
+                sbuf = Buffer(s)
 
-            print(block)
+                print(block)
 
-            sbuf.put_utf8(file_name)
+                sbuf.put_utf8(file_name)
 
-            file_size = os.path.getsize(folder + block)
-            sbuf.put_utf8(str(file_size))
+                file_size = os.path.getsize(folder + block)
+                sbuf.put_utf8(str(file_size))
 
-            with open(folder + block, 'rb') as f:
-                sbuf.put_bytes(f.read())
-            print('File Sent')
+                with open(folder + block, 'rb') as f:
+                    sbuf.put_bytes(f.read())
+                print('File Sent')
+        except Exception as e:
+            logging.warning("NO node")
 
 
 def download_file(file_name, user, url_ledger_node, key_file):
@@ -188,27 +205,31 @@ def download_file(file_name, user, url_ledger_node, key_file):
     for block_hash, node in file_metadata["blocks_of_file"].items():
         print(block_hash + ":" + node)
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((node, PORT))
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((node, PORT))
 
-        with s:
-            sbuf = Buffer(s)
+            with s:
+                sbuf = Buffer(s)
 
-            sbuf.put_utf8(file_metadata["owner"] + "/" + file_metadata["file_name"] + "/" + block_hash)
+                sbuf.put_utf8(file_metadata["owner"] + "/" + file_metadata["file_name"] + "/" + block_hash)
 
-            with open(folder + block_hash, 'wb+') as f:
-                remaining = int(file_size) + 4000
-                while remaining:
-                    chunk_size = 4096 if remaining >= 4096 else remaining
-                    chunk = sbuf.get_bytes(chunk_size)
-                    if not chunk: break
-                    f.write(chunk)
-                    remaining -= len(chunk)
-                if remaining:
-                    print('File incomplete.  Missing', remaining, 'bytes.')
-                else:
-                    print('File received successfully.')
-            print('Connection closed.')
+                with open(folder + block_hash, 'wb+') as f:
+                    remaining = int(file_size) + 4000
+                    while remaining:
+                        chunk_size = 4096 if remaining >= 4096 else remaining
+                        chunk = sbuf.get_bytes(chunk_size)
+                        if not chunk: break
+                        f.write(chunk)
+                        remaining -= len(chunk)
+                    if remaining:
+                        print('File incomplete.  Missing', remaining, 'bytes.')
+                    else:
+                        print('File received successfully.')
+                print('Connection closed.')
+        except Exception as e:
+            logging.warning("NO node")
+
 
 
     # 3. Restore raptor file

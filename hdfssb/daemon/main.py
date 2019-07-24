@@ -25,6 +25,7 @@ FAMILY_NAME = 'hdfssb'
 key_file = os.getenv('KEY_PATH', 'root.priv')
 url_ledger_node = os.getenv('URL_LEDGER_NODE', '127.22.0.1:8008')
 name = socket.gethostname()  # "node5"
+name = name + '.hdfssb-daemon'
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -37,7 +38,7 @@ print("Add node ", asd)
 hdfssb_client.wait_for_transaction(asd)
 
 DIR = "/daemon/daemon_dir/"
-DIR = "./daemon/"
+# DIR = "./daemon/"
 
 port = 60000  # Reserve a port for your service.
 s = socket.socket()  # Create a socket object

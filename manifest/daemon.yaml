@@ -32,14 +32,14 @@ spec:
               name: "tcp-connection"
           volumeMounts:
             - name: host-path
-              mountPath: /daemon/daemon_dir  # TODO: save file in volumen
+              mountPath: /daemon/daemon_dir
             - name: sawtooth-keys
               mountPath: /project/keys
           env:
             - name: KEY_PATH
               value: "/project/keys/root.priv"
             - name: URL_LEDGER_NODE
-              value: "192.168.0.150:31454"
+              value: ""
             - name: OWN_IP
               valueFrom:
                 fieldRef:
@@ -67,6 +67,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
           command: ["/bin/bash"]
           args: ["-c","export PYTHONPATH=.. ; python3 daemon/main.py"]
 
