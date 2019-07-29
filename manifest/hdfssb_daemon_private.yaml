@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hdfssb-daemon
+  namespace: hdfssb
+  labels:
+    server: private
+spec:
+  selector:
+    matchLabels:
+      app: hdfssb-daemon # has to match .spec.template.metadata.labels
+  template:
+    metadata:
+      labels:
+        app: hdfssb-daemon # has to match .spec.selector.matchLabels
+    spec:
+
+#      tolerations:
+#      - key: cluster-type/private
+#        effect: Schedule
+
+      initContainers:
+        - name: create-private-key
+          image: damenus/hdfssb-processor:0.3
+          volumeMounts:
+            - name: sawtooth-keys
+              mountPath: /keys
+          command: ["/bin/bash"]
+          args: ["-c","sawtooth keygen --key-dir /keys;  "]
+
+      containers:
+        - name: buzzy
+          image: damenus/hdfssb-processor:0.3
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 60000
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+            - name: sawtooth-keys
+              mountPath: /project/keys
+          env:
+            - name: KEY_PATH
+              value: "/project/keys/root.priv"
+            - name: URL_LEDGER_NODE
+              value: ""
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command: ["/bin/bash"]
+          args: ["-c","sleep inf"]
+
+        - name: reciver
+          image: damenus/hdfssb-processor:0.3
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 60000
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+            - name: sawtooth-keys
+              mountPath: /project/keys
+          env:
+            - name: CLUSTER_TYPE
+              value: private
+            - name: KEY_PATH
+              value: "/project/keys/root.priv"
+            - name: URL_LEDGER_NODE
+              value: "192.168.0.150:31454"
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+          command: ["/bin/bash"]
+          args: ["-c","export PYTHONPATH=.. ; python3 daemon/main.py"]
+
+        - name: sender
+          image: damenus/hdfssb-processor:0.3
+#          imagePullPolicy: Always
+          ports:
+            - containerPort: 60002
+              name: "tcp-connection"
+          volumeMounts:
+            - name: host-path
+              mountPath: /daemon/daemon_dir
+          env:
+            - name: OWN_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command: ["/bin/bash"]
+          args: ["-c","export PYTHONPATH=.. ; python3 daemon/main2.py"]
+
+      volumes:
+        - name: host-path
+          hostPath:
+            path: /daemon/daemon_dir
+        - name: sawtooth-keys
+          emptyDir: {}
+
+#    - name:  example-local-pv
+#      persistentVolumeClaim:
+#       claimName:  example-local-pv
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfssb-daemon
+  labels:
+    run: hdfssb-daemon
+spec:
+  type: NodePort
+  ports:
+  - name: reciver-port
+    port: 60000
+    nodePort: 31700
+    protocol: TCP
+  - name: sender-port
+    port: 60002
+    nodePort: 31702
+    protocol: TCP
+  selector:
+    app: hdfssb-daemon

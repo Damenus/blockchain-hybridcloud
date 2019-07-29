@@ -97,6 +97,8 @@ class SimpleWalletTransactionHandler(TransactionHandler):
             self._add_node(context, payload, from_key, node_state)
         elif operation == "delete_node":
             self._add_node(context, payload, from_key, node_state)
+        elif operation == "update_node":
+            self._update_node(context, payload, from_key, node_state)
         # file
         elif operation == "add_file":
             self._add_file(context, payload, from_key, files_state)
@@ -133,6 +135,16 @@ class SimpleWalletTransactionHandler(TransactionHandler):
 
         node = Node(node_name=name, cluster=cluster, capacity=capacity, taken_space=taken_space, reversed_space=reversed_space, last_update=last_update)
         list_nodes = node_state.set_game(name, node)
+
+        node_name_address = self._get_wallet_address(name)
+        LOGGER.info('Node name: {} Address: {} '.format(name, node_name_address))
+
+    def _update_node(self, context, payload_map, from_key, node_state):
+
+        name = payload_map['node_name']
+        taken_space = payload_map['taken_space']
+
+        list_nodes = node_state.update_node(name, taken_space)
 
         node_name_address = self._get_wallet_address(name)
         LOGGER.info('Node name: {} Address: {} '.format(name, node_name_address))

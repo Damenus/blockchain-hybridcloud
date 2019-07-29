@@ -125,6 +125,15 @@ class HdfssbClient:
             auth_user=auth_user,
             auth_password=auth_password)
 
+    def update_node(self, name, taken_space, wait=None, auth_user=None, auth_password=None):
+        return self._send_xo_txn(
+            name=name,
+            payload_object={'taken_space': taken_space},
+            action="update_node",
+            wait=wait,
+            auth_user=auth_user,
+            auth_password=auth_password)
+
     def list_files(self, auth_user=None, auth_password=None):
         hdfssb_prefix = self._get_prefix()
         file_prefix = self._get_prefix_file()
