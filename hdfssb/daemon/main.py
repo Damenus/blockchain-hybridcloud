@@ -22,20 +22,22 @@ class XoException(Exception):
 
 FAMILY_NAME = 'hdfssb'
 
+cluster_type = key_file = os.getenv('CLUSTER_TYPE', 'public')
 key_file = os.getenv('KEY_PATH', 'root.priv')
 url_ledger_node = os.getenv('URL_LEDGER_NODE', '127.22.0.1:8008')
 name = socket.gethostname()  # "node5"
 name = name + '.hdfssb-daemon'
+taken_space = 0
 
 logging.basicConfig(level=logging.DEBUG)
 
 print('Registring...')
 hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-new_node = dict(node_name=name, cluster="private", capacity=1000, taken_space=0, reversed_space=0, last_update=str(time.time()))
+new_node = dict(node_name=name, cluster=cluster_type, capacity=1000, taken_space=taken_space, reversed_space=0, last_update=str(time.time()))
 print(new_node)
-asd = hdfssb_client.add_node(name=name, payload_object=new_node)
-print("Add node ", asd)
-hdfssb_client.wait_for_transaction(asd)
+tx = hdfssb_client.add_node(name=name, payload_object=new_node)
+print("Add node ", tx)
+hdfssb_client.wait_for_transaction(tx)
 
 DIR = "/daemon/daemon_dir/"
 # DIR = "./daemon/"
@@ -97,6 +99,10 @@ while True:
             os.remove(temp_file_name)
 
         # update blockchain that less space on node
+        tx = hdfssb_client.update_node(name=name, taken_space=taken_space)
+        print("Add node ", tx)
+        hdfssb_client.wait_for_transaction(tx)
+
         # update blockchain that part file is on node
 
     print('Connection closed.')

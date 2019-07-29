@@ -83,6 +83,15 @@ class NodeState:
 
         return self._load_nodes(node_name=game_name).get(game_name)
 
+    def update_node(self, name, taken_space):
+        games = self._load_nodes(node_name=name)
+        game = games.get(name)
+
+        game.taken_space += taken_space
+
+        games[name] = game
+        self._store_node(name, games=games)
+
     def _store_node(self, game_name, games):
         address = make_node_address(game_name)
 
