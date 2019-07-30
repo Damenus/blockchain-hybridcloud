@@ -14,6 +14,10 @@ spec:
       labels:
         app: hdfssb-daemon # has to match .spec.selector.matchLabels
     spec:
+      terminationGracePeriodSeconds: 10
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
 
 #      tolerations:
 #      - key: cluster-type/private
@@ -21,7 +25,7 @@ spec:
 
       initContainers:
         - name: create-private-key
-          image: damenus/hdfssb-processor:0.3
+          image: damenus/hdfssb-processor:0.4
           volumeMounts:
             - name: sawtooth-keys
               mountPath: /keys
@@ -30,11 +34,11 @@ spec:
 
       containers:
         - name: buzzy
-          image: damenus/hdfssb-processor:0.3
+          image: damenus/hdfssb-processor:0.4
           imagePullPolicy: Always
-          ports:
-            - containerPort: 60000
-              name: "tcp-connection"
+#          ports:
+#            - containerPort: 60000
+#              name: "tcp-connection"
           volumeMounts:
             - name: host-path
               mountPath: /daemon/daemon_dir
@@ -53,11 +57,11 @@ spec:
           args: ["-c","sleep inf"]
 
         - name: reciver
-          image: damenus/hdfssb-processor:0.3
+          image: damenus/hdfssb-processor:0.4
           imagePullPolicy: Always
-          ports:
-            - containerPort: 60000
-              name: "tcp-connection"
+#          ports:
+#            - containerPort: 60000
+#              name: "tcp-connection"
           volumeMounts:
             - name: host-path
               mountPath: /daemon/daemon_dir
@@ -69,7 +73,7 @@ spec:
             - name: KEY_PATH
               value: "/project/keys/root.priv"
             - name: URL_LEDGER_NODE
-              value: "192.168.0.150:31454"
+              value: "192.168.0.150:8008"
             - name: OWN_IP
               valueFrom:
                 fieldRef:
@@ -86,8 +90,8 @@ spec:
           args: ["-c","export PYTHONPATH=.. ; python3 daemon/main.py"]
 
         - name: sender
-          image: damenus/hdfssb-processor:0.3
-#          imagePullPolicy: Always
+          image: damenus/hdfssb-processor:0.4
+          imagePullPolicy: Always
           ports:
             - containerPort: 60002
               name: "tcp-connection"
@@ -125,11 +129,11 @@ spec:
   ports:
   - name: reciver-port
     port: 60000
-    nodePort: 31700
+#    nodePort: 31700
     protocol: TCP
   - name: sender-port
     port: 60002
-    nodePort: 31702
+#    nodePort: 31702
     protocol: TCP
   selector:
     app: hdfssb-daemon

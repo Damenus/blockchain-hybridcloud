@@ -99,9 +99,9 @@ while True:
             os.remove(temp_file_name)
 
         # update blockchain that less space on node
-        tx = hdfssb_client.update_node(name=name, taken_space=taken_space)
-        print("Add node ", tx)
-        hdfssb_client.wait_for_transaction(tx)
+        # tx = hdfssb_client.update_node(name=name, taken_space=taken_space)
+        # print("Add node ", tx)
+        # hdfssb_client.wait_for_transaction(tx)
 
         # update blockchain that part file is on node
 

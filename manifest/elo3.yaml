@@ -2,13 +2,20 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: sawtooth-validator
+  namespace: hdfssb
 spec:
+
   replicas: 1
   template:
     metadata:
       labels:
         name: sawtooth-validator
     spec:
+      terminationGracePeriodSeconds: 10
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+
       containers:
         - name: sawtooth-rest-api
           image: hyperledger/sawtooth-rest-api:1.1

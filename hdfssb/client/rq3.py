@@ -36,6 +36,8 @@ def main():
 
 # export PYTHONPATH=../.. ; python3 rq3.py send SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
 # export PYTHONPATH=../.. ; python3 rq3.py download SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
+# export PYTHONPATH=../.. ; python3 rq3.py send SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:8008 /project/keys/root.priv
+# export PYTHONPATH=../.. ; python3 rq3.py download SampleAudio_0.7mb.mp3 ddarczuk 192.168.0.150:31454 /project/keys/root.priv
 
 
 def list_files(url_ledger_node, key_file):
@@ -105,7 +107,7 @@ def send_file(file_name, user, url_ledger_node, key_file):
         hash_name = hashlib.sha1(str.encode(block_string)).hexdigest()
         with open(folder + hash_name, "w+") as file:
             file.write(block_string)
-        logging.info("Create block ", block_string)
+        # logging.info("Create block ", block_string)
 
     del mapa['symbols']
     logging.info("MAPA: ", mapa)
