@@ -113,6 +113,12 @@ spec:
         - name: sawtooth-keys
           emptyDir: {}
 
+      lifecycle:
+        preStop:
+          exec:
+            command: ["/bin/sh", "-c", "echo First container finished > /myshareddata/finished"]
+
+
 #    - name:  example-local-pv
 #      persistentVolumeClaim:
 #       claimName:  example-local-pv
