@@ -20,16 +20,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='command', help="Command: send or download")
     parser.add_argument(dest='file_name')
-    parser.add_argument(dest='user')
+    # parser.add_argument(dest='user')
     parser.add_argument(dest='url_ledger_node')
     parser.add_argument(dest='key_file')
 
     args = parser.parse_args()
 
     if args.command == 'send':
-        send_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+        send_file(args.file_name, args.url_ledger_node, args.key_file)
     elif args.command == 'download':
-        download_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+        download_file(args.file_name, args.url_ledger_node, args.key_file)
     elif args.command == 'list_files':
         list_files(args.url_ledger_node, args.key_file)
     elif args.command == 'list_nodes':
@@ -43,21 +43,25 @@ def main():
 
 def list_files(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_files())
+    print(hdfssb_client.list_files_decoded())
 
 
 def list_nodes(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_nodes())
+    print(hdfssb_client.list_nodes_decoded())
 
 
-def send_file(file_name, user, url_ledger_node, key_file):
+def send_file(file_name, url_ledger_node, key_file):
     #key_file = 'root.priv'
     #url_ledger_node = '127.22.0.1:8008'
     #user = 'ddarczuk'
     #file_name = 'SampleAudio_0.7mb.mp3'
     HOST = socket.gethostname()
     PORT = 60000
+
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
+    public_key = hdfssb_client.get_public_key()
+    user = public_key
 
     owner_folder = './tmp_send/' + user + '/'
     folder = owner_folder + file_name + '/'
@@ -117,8 +121,6 @@ def send_file(file_name, user, url_ledger_node, key_file):
     logging.info("MAPA: ", mapa)
 
     # 3. Read ledger, to find nodes where send blocks
-
-    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
 
     nodes = hdfssb_client.list_nodes_decoded()
     logging.info("Nodes ", nodes)
@@ -206,7 +208,7 @@ def send_file(file_name, user, url_ledger_node, key_file):
             logging.warning("NO node")
 
 
-def download_file(file_name, user, url_ledger_node, key_file):
+def download_file(file_name, url_ledger_node, key_file):
     HOST = socket.gethostname()
     PORT = 60002
     #file_name = 'SampleAudio_0.7mb.mp3'

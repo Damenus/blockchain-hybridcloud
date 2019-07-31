@@ -66,6 +66,9 @@ class HdfssbClient:
         self._address_file = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
                         _hash(self._publicKey.encode('utf-8'))[0:64]
 
+    def get_public_key(self):
+        return self._publicKey
+
     def _get_prefix(self):
         return _sha512('hdfssb'.encode('utf-8'))[0:6]
 
