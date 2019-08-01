@@ -122,6 +122,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hdfssb-daemon
+  namespace: hdfssb
   labels:
     run: hdfssb-daemon
 spec:
