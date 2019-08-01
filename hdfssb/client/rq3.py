@@ -102,9 +102,13 @@ def send_file(file_name, url_ledger_node, key_file):
     # dla małych plików jak mp3
     # file_encoded_map = os.read_fiel as map
 
+    # x = re.search(r'(?P<symbols>\d*) symbols \(needed: >(?P<needed>\d*)', output.decode("utf-8"))
+    # needed = int(x['needed'])
+    # symbols = int(x['symbols'])
     x = re.search(r'(?P<symbols>\d*) symbols \(needed: >(?P<needed>\d*)', output.decode("utf-8"))
-    needed = int(x['needed'])
-    symbols = int(x['symbols'])
+    symbols = int(x.group(1))
+    needed = int(x.group(2))
+
     # 2. Load encoded file and split blocks to files
 
     with open(owner_folder + file_name+'.enc', 'r') as myfile:
@@ -124,9 +128,6 @@ def send_file(file_name, url_ledger_node, key_file):
 
     nodes = hdfssb_client.list_nodes_decoded()
     logging.info("Nodes ", nodes)
-
-    needed = int(x['needed'])
-    symbols = int(x['symbols'])
 
     max_number_public_node = needed - 1
     max_number_private_node = symbols - needed + 1
@@ -287,7 +288,7 @@ def download_file(file_name, url_ledger_node, key_file):
 
     # 4. Decode file
 
-    decode = """./python-libraptorq/rq \
+    decode = """./hdfssb/client/python-libraptorq/rq \
         --debug \
         decode \
         {path_src} \
