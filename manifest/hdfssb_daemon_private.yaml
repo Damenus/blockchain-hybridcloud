@@ -22,7 +22,16 @@ spec:
 #      tolerations:
 #      - key: cluster-type/private
 #        effect: Schedule
-
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: own_ip
+                    operator: In
+                    values:
+                      - 100.64.176.30
+                      - 100.64.176.31
       initContainers:
         - name: create-private-key
           image: damenus/hdfssb-processor:0.4
@@ -48,7 +57,7 @@ spec:
             - name: KEY_PATH
               value: "/project/keys/root.priv"
             - name: URL_LEDGER_NODE
-              value: ""
+              value: "100.64.176.31"
             - name: OWN_IP
               valueFrom:
                 fieldRef:
@@ -73,7 +82,7 @@ spec:
             - name: KEY_PATH
               value: "/project/keys/root.priv"
             - name: URL_LEDGER_NODE
-              value: "192.168.0.150:8008"
+              value: "100.64.176.31:8008"
             - name: OWN_IP
               valueFrom:
                 fieldRef:
@@ -88,6 +97,10 @@ spec:
                   fieldPath: spec.serviceAccountName
           command: ["/bin/bash"]
           args: ["-c","export PYTHONPATH=.. ; python3 daemon/main.py"]
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "export PYTHONPATH=.. ; python3 daemon/delete_from_ledger.py"]
 
         - name: sender
           image: damenus/hdfssb-processor:0.4
@@ -113,10 +126,6 @@ spec:
         - name: sawtooth-keys
           emptyDir: {}
 
-      lifecycle:
-        preStop:
-          exec:
-            command: ["/bin/sh", "-c", "echo First container finished > /myshareddata/finished"]
 
 
 #    - name:  example-local-pv
