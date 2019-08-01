@@ -25,7 +25,7 @@ FAMILY_NAME = 'hdfssb'
 cluster_type = key_file = os.getenv('CLUSTER_TYPE', 'public')
 key_file = os.getenv('KEY_PATH', 'root.priv')
 url_ledger_node = os.getenv('URL_LEDGER_NODE', '127.22.0.1:8008')
-name = os.getenv('OWN_IP', socket.gethostname())  # "node5"
+name = os.getenv('OWN_IP', socket.gethostname())  # socket.gethostname() "node5"
 #name = name + '.hdfssb-daemon'
 taken_space = 0
 

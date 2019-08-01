@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import re
 import subprocess
 import os
 import logging
@@ -19,16 +20,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='command', help="Command: send or download")
     parser.add_argument(dest='file_name')
-    parser.add_argument(dest='user')
+    # parser.add_argument(dest='user')
     parser.add_argument(dest='url_ledger_node')
     parser.add_argument(dest='key_file')
 
     args = parser.parse_args()
 
     if args.command == 'send':
-        send_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+        send_file(args.file_name, args.url_ledger_node, args.key_file)
     elif args.command == 'download':
-        download_file(args.file_name, args.user, args.url_ledger_node, args.key_file)
+        download_file(args.file_name, args.url_ledger_node, args.key_file)
     elif args.command == 'list_files':
         list_files(args.url_ledger_node, args.key_file)
     elif args.command == 'list_nodes':
@@ -42,21 +43,25 @@ def main():
 
 def list_files(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_files())
+    print(hdfssb_client.list_files_decoded())
 
 
 def list_nodes(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_nodes())
+    print(hdfssb_client.list_nodes_decoded())
 
 
-def send_file(file_name, user, url_ledger_node, key_file):
+def send_file(file_name, url_ledger_node, key_file):
     #key_file = 'root.priv'
     #url_ledger_node = '127.22.0.1:8008'
     #user = 'ddarczuk'
     #file_name = 'SampleAudio_0.7mb.mp3'
     HOST = socket.gethostname()
     PORT = 60000
+
+    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
+    public_key = hdfssb_client.get_public_key()
+    user = public_key
 
     owner_folder = './tmp_send/' + user + '/'
     folder = owner_folder + file_name + '/'
@@ -81,7 +86,7 @@ def send_file(file_name, user, url_ledger_node, key_file):
     #  ./python-libraptorq/rq --debug encode -s1600 -m200 --repair-symbols-rate 1 --drop-rate 0.5 README.rst README.rst.enc
 
     # launch your python2 script using bash
-    encode = """./python-libraptorq/rq \
+    encode = """./hdfssb/client/python-libraptorq/rq \
     --debug \
     encode \
     -s{s} \
@@ -97,6 +102,9 @@ def send_file(file_name, user, url_ledger_node, key_file):
     # dla małych plików jak mp3
     # file_encoded_map = os.read_fiel as map
 
+    x = re.search(r'(?P<symbols>\d*) symbols \(needed: >(?P<needed>\d*)', output.decode("utf-8"))
+    needed = int(x['needed'])
+    symbols = int(x['symbols'])
     # 2. Load encoded file and split blocks to files
 
     with open(owner_folder + file_name+'.enc', 'r') as myfile:
@@ -114,16 +122,34 @@ def send_file(file_name, user, url_ledger_node, key_file):
 
     # 3. Read ledger, to find nodes where send blocks
 
-    hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-
-    nodes = hdfssb_client.list_nodes()
+    nodes = hdfssb_client.list_nodes_decoded()
     logging.info("Nodes ", nodes)
 
+    needed = int(x['needed'])
+    symbols = int(x['symbols'])
+
+    max_number_public_node = needed - 1
+    max_number_private_node = symbols - needed + 1
+
     valid_nodes = []
-    for node in nodes:
-        node = node.decode().split(",")
-        #if node[] # dodaj jeśli jest wolne miejsce na nodzie i dodaj procent private i publick
-        valid_nodes.append(node[0])
+    number_private_node = 0
+    number_public_node = 0
+
+    for node_name, dict_atribute in nodes.items():
+        #node = node.decode().split(",")
+        #if node[] # dodaj jesli jest wolne miejsce na nodzie i dodaj procent private i publick
+        #valid_nodes.append(node[0])
+
+        if dict_atribute['capacity'] < dict_atribute['taken_space'] + dict_atribute['reversed_space']:
+            continue
+
+        if dict_atribute['cluster'] == 'private' and number_private_node <= max_number_private_node:
+            number_private_node += 1
+            valid_nodes.append(node_name)
+        elif dict_atribute['cluster'] == 'public' and number_public_node <= max_number_public_node:
+            number_public_node += 1
+            valid_nodes.append(node_name)
+
 
     # 4. Assign blocks to nodes
 
@@ -182,7 +208,7 @@ def send_file(file_name, user, url_ledger_node, key_file):
             logging.warning("NO node")
 
 
-def download_file(file_name, user, url_ledger_node, key_file):
+def download_file(file_name, url_ledger_node, key_file):
     HOST = socket.gethostname()
     PORT = 60002
     #file_name = 'SampleAudio_0.7mb.mp3'
@@ -231,8 +257,6 @@ def download_file(file_name, user, url_ledger_node, key_file):
                 print('Connection closed.')
         except Exception as e:
             logging.warning("NO node")
-
-
 
     # 3. Restore raptor file
 

@@ -66,6 +66,9 @@ class HdfssbClient:
         self._address_file = _hash(FAMILY_NAME.encode('utf-8'))[0:6] + \
                         _hash(self._publicKey.encode('utf-8'))[0:64]
 
+    def get_public_key(self):
+        return self._publicKey
+
     def _get_prefix(self):
         return _sha512('hdfssb'.encode('utf-8'))[0:6]
 
@@ -156,7 +159,7 @@ class HdfssbClient:
     def list_files_decoded(self):
         list_files = self.list_files()
 
-        nodes = {}
+        files = {}
         try:
             for node in list_files:
                 file_name, owner, state, state, size, file_hash, blocks_str, checksums, data_bytes, oti_common, oti_scheme, last_update = node.decode().split(",")
@@ -166,11 +169,11 @@ class HdfssbClient:
                     block, node = pair.split(":")
                     blocks_of_file[block] = node
 
-                nodes[file_name] = [file_name, owner, state, size, file_hash, blocks_of_file, checksums, data_bytes, oti_common, oti_scheme, last_update]
+                files[file_name] = [file_name, owner, state, size, file_hash, blocks_of_file, checksums, data_bytes, oti_common, oti_scheme, last_update]
         except ValueError:
             raise InternalError("Failed to deserialize game data")
 
-        return nodes
+        return files
 
     def list_nodes(self, auth_user=None, auth_password=None):
         hdfssb_prefix = self._get_prefix()
@@ -190,6 +193,23 @@ class HdfssbClient:
 
         except BaseException:
             return None
+
+    def list_nodes_decoded(self, auth_user=None, auth_password=None):
+        list_nodes = self.list_nodes(auth_user, auth_password)
+
+        nodes = {}
+        try:
+            for node in list_nodes:
+                node_name, cluster, capacity, taken_space, reversed_space, last_update = node.decode().split(
+                    ",")
+
+                nodes[node_name] = {'node_name': node_name, 'cluster': cluster, 'capacity': capacity,
+                                    'taken_space': taken_space, 'reversed_space': reversed_space,
+                                    'last_update': last_update}
+        except ValueError:
+            raise InternalError("Failed to deserialize game data")
+
+        return nodes
 
     def show_file(self, name, auth_user=None, auth_password=None):
         address = self._get_address_file(name)
