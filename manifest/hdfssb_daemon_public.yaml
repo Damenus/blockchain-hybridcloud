@@ -1,19 +1,24 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: DaemonSet
 metadata:
   name: hdfssb-daemon
+  namespace: hdfssb
+  labels:
+    server: public
 spec:
   selector:
     matchLabels:
       app: hdfssb-daemon # has to match .spec.template.metadata.labels
-  serviceName: "hdfssb-daemon"
-  replicas: 2
   template:
     metadata:
       labels:
         app: hdfssb-daemon # has to match .spec.selector.matchLabels
     spec:
-      terminationGracePeriodSeconds: 10
+
+#      tolerations:
+#      - key: cluster-type/public
+#        effect: Schedule
+
       initContainers:
         - name: create-private-key
           image: damenus/hdfssb-processor:0.3
@@ -59,6 +64,8 @@ spec:
             - name: sawtooth-keys
               mountPath: /project/keys
           env:
+            - name: CLUSTER_TYPE
+              value: public
             - name: KEY_PATH
               value: "/project/keys/root.priv"
             - name: URL_LEDGER_NODE
@@ -114,7 +121,7 @@ metadata:
   labels:
     run: hdfssb-daemon
 spec:
-  clusterIP: None
+  type: NodePort
   ports:
   - name: reciver-port
     port: 60000

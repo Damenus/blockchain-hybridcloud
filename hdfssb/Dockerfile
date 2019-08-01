@@ -27,10 +27,16 @@ RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/ap
  && apt-get update \
  && apt-get upgrade -y
 
+RUN apt-get update
+
 RUN apt-get install -y -q \
     git \
     python3 \
-    python3-stdeb
+    python3-stdeb \
+    python \
+    python-pip
+
+RUN pip install libraptorq
 
 RUN apt-get install -y -q \
     python3-grpcio \
@@ -52,6 +58,16 @@ RUN apt-get install -y -q \
     python3-sawtooth-sdk \
  && apt-get clean
 
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8AA7AF1F1091A5FD
+RUN apt-get update
+RUN apt-get install -y sawtooth
+RUN apt-get install -y vim
+
+RUN apt-get install -y -q \
+    python3-simplejson
+
+# 9f20b034aca:/project# export PYTHONPATH=. ; python3 hdfssb/hdfssb/client/rq3.py
+
 RUN mkdir -p /var/log/sawtooth
 
 ENV PATH=$PATH:/project/hdfssb
@@ -60,9 +76,12 @@ WORKDIR /project/hdfssb
 
 COPY . .
 
-EXPOSE 4004/tcp
+COPY client/libRaptorQ.so /usr/lib/
+COPY client/libRaptorQ.so.0 /usr/lib/
 
-CMD bash -c 'python3 ./hdfssb/processor/simple.py'
+#EXPOSE 4004/tcp
+
+#CMD bash -c 'python3 ./hdfssb/processor/simple.py'
 
 #CMD echo "\033[0;32m--- Building xo-tp-python ---\n\033[0m" \
 # && bin/protogen \
