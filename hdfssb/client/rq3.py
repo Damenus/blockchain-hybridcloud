@@ -43,12 +43,12 @@ def main():
 
 def list_files(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_files_decoded())
+    print(str(hdfssb_client.list_files_decoded()).replace('\'', '"'))
 
 
 def list_nodes(url_ledger_node, key_file):
     hdfssb_client = HdfssbClient(base_url=url_ledger_node, keyfile=key_file)
-    print(hdfssb_client.list_nodes_decoded())
+    print(str(hdfssb_client.list_nodes_decoded()).replace('\'', '"'))
 
 
 def send_file(file_name, url_ledger_node, key_file):
